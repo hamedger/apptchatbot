@@ -79,7 +79,9 @@ dist
 
 # Gatsby files
 .cache/
-public
+# Keep CRA public folder inside src for frontend build
+!src/public/
+!src/public/**
 
 # Storybook build outputs
 .out
