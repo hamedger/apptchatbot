@@ -40,13 +40,27 @@ app.use(helmet({
   }
 }));
 
+
 // CORS configuration
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_ORIGIN || true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
+
 app.use(cors(corsOptions));
+
 
 // Body parsing middleware
 // Important: Twilio webhooks use application/x-www-form-urlencoded
