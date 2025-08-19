@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+</head>
+<body>
+  <h1>Appointments</h1>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Slot</th>
+        <th>Worker</th>
+      </tr>
+    </thead>
+    <tbody id="appointments"></tbody>
+  </table>
+
+  <script>
+    fetch('/data/appointments.json')
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById('appointments');
+        data.forEach(app => {
+          const row = `<tr><td>${app.user}</td><td>${app.slot}</td><td>${app.worker}</td></tr>`;
+          tbody.innerHTML += row;
+        });
+      });
+  </script>
+</body>
+</html>

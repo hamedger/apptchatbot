@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: arlington-whatsapp-bot
+    env: node
+    plan: starter
+    buildCommand: |
+      npm ci --only=production
+      cd src && npm ci && npm run build && cd ..
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: ADMIN_WHATSAPP_NUMBER
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://arlington-whatsapp-bot.onrender.com
+      - key: DATABASE_TYPE
+        value: sqlite
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/data/appointments.db
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 1000
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+    healthCheckPath: /healthz
+    autoDeploy: true
+    branch: main
+    numInstances: 1
+    disk:
+      name: data-disk
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  - type: redis
+    name: arlington-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

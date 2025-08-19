@@ -1,0 +1,77 @@
+[
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "undefined 9am",
+    "worker": "Alice"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "undefined 10am",
+    "worker": "Bob"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "undefined 11am",
+    "worker": "Charlie"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Tuesday 10am",
+    "worker": "Alice"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Friday 9am",
+    "worker": "Bob"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Friday 11am",
+    "worker": "Charlie"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Wednesday 9am",
+    "worker": "Alice"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Thursday 10am",
+    "worker": "Bob"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Friday 12pm",
+    "worker": "Charlie"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Thursday 7pm",
+    "worker": "Alice"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Thursday 4pm",
+    "worker": "Bob"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Tuesday 9am",
+    "worker": "Charlie"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Thursday 12pm",
+    "worker": "Alice"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Monday 11am",
+    "worker": "Bob"
+  },
+  {
+    "user": "whatsapp:+12489075504",
+    "slot": "Monday 12pm",
+    "worker": "Charlie"
+  }
+]
