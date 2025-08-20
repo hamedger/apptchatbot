@@ -112,8 +112,8 @@ app.use('/whatsapp', whatsappRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/auth', authRouter);
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - catch all unmatched routes
+app.use((req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: 'Route not found',
@@ -185,9 +185,13 @@ const initializeApp = async () => {
       logger.info('Data migration completed');
     }
     
+    // Initialize auth service
+    await authService.initialize();
+    logger.info('Authentication service initialized');
+    
     // Initialize default admin user
     await authService.initializeDefaultAdmin();
-    logger.info('Authentication service initialized');
+    logger.info('Default admin user initialized');
     
     // Start server
     const port = process.env.PORT || 3000;
