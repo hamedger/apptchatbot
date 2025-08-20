@@ -4,8 +4,6 @@ const { v4: uuidv4 } = require('uuid');
 const database = require('./database');
 const logger = require('./logger');
 
-console.log('🔐 AuthService module loading...');
-
 class AuthService {
   constructor() {
     this.jwtSecret = null;
@@ -132,7 +130,6 @@ class AuthService {
    * Authenticate a user (v2)
    */
   async authenticateUser(username, password) {
-    console.log('🔐 authenticateUser called with:', username);
     try {
       // Get user with password hash
       const user = await database.get(
@@ -290,9 +287,6 @@ class AuthService {
   }
 }
 
-console.log('🔐 AuthService class defined, creating instance...');
 const authServiceInstance = new AuthService();
-console.log('🔐 AuthService instance created, methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(authServiceInstance)));
-console.log('🔐 authenticateUser method exists:', typeof authServiceInstance.authenticateUser);
 
 module.exports = authServiceInstance;
