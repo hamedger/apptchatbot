@@ -127,7 +127,7 @@ class AuthService {
   }
 
   /**
-   * Authenticate a user
+   * Authenticate a user (v2)
    */
   async authenticateUser(username, password) {
     try {
