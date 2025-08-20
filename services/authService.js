@@ -189,6 +189,102 @@ class AuthService {
       logger.error('Default admin initialization error:', error);
     }
   }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(userId) {
+    try {
+      const user = await database.get(
+        'SELECT id, username, role, created_at, last_login FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      return user;
+    } catch (error) {
+      logger.error('Get user by ID error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Change user password
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    try {
+      // Get current user with password hash
+      const user = await database.get(
+        'SELECT password_hash FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Verify current password
+      const isValidCurrentPassword = await this.comparePassword(currentPassword, user.password_hash);
+      if (!isValidCurrentPassword) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Hash new password
+      const newPasswordHash = await this.hashPassword(newPassword);
+
+      // Update password
+      await database.run(
+        'UPDATE users SET password_hash = ? WHERE id = ?',
+        [newPasswordHash, userId]
+      );
+
+      logger.info(`Password changed for user ID: ${userId}`);
+    } catch (error) {
+      logger.error('Change password error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List all users (admin only)
+   */
+  async listUsers() {
+    try {
+      const users = await database.query(
+        'SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at DESC'
+      );
+
+      return users;
+    } catch (error) {
+      logger.error('List users error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete user (admin only)
+   */
+  async deleteUser(userId) {
+    try {
+      const result = await database.run(
+        'DELETE FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (result.changes === 0) {
+        throw new Error('User not found');
+      }
+
+      logger.info(`User deleted: ${userId}`);
+      return true;
+    } catch (error) {
+      logger.error('Delete user error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AuthService();
