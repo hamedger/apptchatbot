@@ -1,31 +1,600 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Admin Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arlington Steamers - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .login-container {
+            padding: 50px;
+            text-align: center;
+            display: block;
+        }
+
+        .dashboard-container {
+            padding: 30px;
+            display: none;
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .appointments-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .appointments-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .appointments-table th,
+        .appointments-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .appointments-table th {
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+
+        .appointments-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sm {
+            padding: 8px 15px;
+            font-size: 14px;
+            border-radius: 6px;
+        }
+
+        .btn-edit {
+            background: #17a2b8;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .login-container,
+            .dashboard-container {
+                padding: 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .appointments-table {
+                font-size: 14px;
+            }
+            
+            .appointments-table th,
+            .appointments-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>Appointments</h1>
-  <table border="1">
-    <thead>
-      <tr>
-        <th>User</th>
-        <th>Slot</th>
-        <th>Worker</th>
-      </tr>
-    </thead>
-    <tbody id="appointments"></tbody>
-  </table>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Arlington Steamers</h1>
+            <p>WhatsApp Appointment Management Dashboard</p>
+        </div>
 
-  <script>
-    fetch('/data/appointments.json')
-      .then(res => res.json())
-      .then(data => {
-        const tbody = document.getElementById('appointments');
-        data.forEach(app => {
-          const row = `<tr><td>${app.user}</td><td>${app.slot}</td><td>${app.worker}</td></tr>`;
-          tbody.innerHTML += row;
+        <!-- Login Container -->
+        <div id="loginContainer" class="login-container">
+            <div class="login-form">
+                <h2 style="margin-bottom: 30px; color: #2c3e50;">🔐 Admin Login</h2>
+                <div id="loginMessage"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="username" name="password" required>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+                <div style="margin-top: 20px; font-size: 14px; color: #6c757d;">
+                    <strong>Default:</strong> admin / admin123
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Container -->
+        <div id="dashboardContainer" class="dashboard-container">
+            <div class="dashboard-header">
+                <h2>📊 Dashboard Overview</h2>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAppointments">-</div>
+                    <div class="stat-label">Total Appointments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayAppointments">-</div>
+                    <div class="stat-label">Today's Appointments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingAppointments">-</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="confirmedAppointments">-</div>
+                    <div class="stat-label">Confirmed</div>
+                </div>
+            </div>
+
+            <!-- Appointments Section -->
+            <div class="appointments-section">
+                <div class="section-header">
+                    <h3 class="section-title">📅 Recent Appointments</h3>
+                    <button id="refreshBtn" class="btn">🔄 Refresh</button>
+                </div>
+                <div id="appointmentsTable">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading appointments...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+
+        // DOM elements
+        const loginContainer = document.getElementById('loginContainer');
+        const dashboardContainer = document.getElementById('dashboardContainer');
+        const loginForm = document.getElementById('loginForm');
+        const loginMessage = document.getElementById('loginMessage');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (authToken) {
+                showDashboard();
+                loadDashboardData();
+            } else {
+                showLogin();
+            }
         });
-      });
-  </script>
+
+        // Login form submission
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.querySelector('input[name="password"]').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token;
+                    currentUser = data.user;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    
+                    showSuccessMessage('Login successful! Redirecting...');
+                    setTimeout(() => {
+                        showDashboard();
+                        loadDashboardData();
+                    }, 1000);
+                } else {
+                    showErrorMessage(data.message || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showErrorMessage('Network error. Please try again.');
+            }
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', function() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            showLogin();
+        });
+
+        // Refresh appointments
+        refreshBtn.addEventListener('click', function() {
+            loadDashboardData();
+        });
+
+        // Show login form
+        function showLogin() {
+            loginContainer.style.display = 'block';
+            dashboardContainer.style.display = 'none';
+            loginForm.reset();
+            loginMessage.innerHTML = '';
+        }
+
+        // Show dashboard
+        function showDashboard() {
+            loginContainer.style.display = 'none';
+            dashboardContainer.style.display = 'block';
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const [appointmentsResponse, statsResponse] = await Promise.all([
+                    fetch('/api/appointments', {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    }),
+                    fetch('/api/appointments/stats', {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    })
+                ]);
+
+                if (appointmentsResponse.ok) {
+                    const appointments = await appointmentsResponse.json();
+                    displayAppointments(appointments);
+                }
+
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    displayStats(stats);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showErrorMessage('Failed to load dashboard data');
+            }
+        }
+
+        // Display appointments in table
+        function displayAppointments(appointments) {
+            const tableContainer = document.getElementById('appointmentsTable');
+            
+            if (!appointments || appointments.length === 0) {
+                tableContainer.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 40px;">No appointments found</p>';
+                return;
+            }
+
+            const table = `
+                <table class="appointments-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Phone</th>
+                            <th>Date & Time</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appointments.map(app => `
+                            <tr>
+                                <td>${app.customer_name || app.name || 'N/A'}</td>
+                                <td>${app.phone || app.phone_number || 'N/A'}</td>
+                                <td>${formatDateTime(app.appointment_date || app.slot)}</td>
+                                <td>${app.service || 'Steam Cleaning'}</td>
+                                <td>
+                                    <span class="status-badge status-${getStatusClass(app.status)}">
+                                        ${app.status || 'Pending'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-sm btn-edit" onclick="editAppointment('${app.id}')">Edit</button>
+                                        <button class="btn btn-sm btn-delete" onclick="deleteAppointment('${app.id}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            tableContainer.innerHTML = table;
+        }
+
+        // Display statistics
+        function displayStats(stats) {
+            document.getElementById('totalAppointments').textContent = stats.total || 0;
+            document.getElementById('todayAppointments').textContent = stats.today || 0;
+            document.getElementById('pendingAppointments').textContent = stats.pending || 0;
+            document.getElementById('confirmedAppointments').textContent = stats.confirmed || 0;
+        }
+
+        // Format date and time
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString();
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // Get status class for styling
+        function getStatusClass(status) {
+            if (!status) return 'pending';
+            const lowerStatus = status.toLowerCase();
+            if (lowerStatus.includes('confirm')) return 'confirmed';
+            if (lowerStatus.includes('cancel')) return 'cancelled';
+            return 'pending';
+        }
+
+        // Show success message
+        function showSuccessMessage(message) {
+            loginMessage.innerHTML = `<div class="success-message">${message}</div>`;
+        }
+
+        // Show error message
+        function showErrorMessage(message) {
+            loginMessage.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        // Edit appointment (placeholder)
+        function editAppointment(id) {
+            alert(`Edit appointment ${id} - Feature coming soon!`);
+        }
+
+        // Delete appointment (placeholder)
+        function deleteAppointment(id) {
+            if (confirm('Are you sure you want to delete this appointment?')) {
+                alert(`Delete appointment ${id} - Feature coming soon!`);
+            }
+        }
+    </script>
 </body>
 </html>

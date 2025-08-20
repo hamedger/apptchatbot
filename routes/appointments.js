@@ -1,117 +1,167 @@
 // routes/appointments.js
 const express = require('express');
-const fs = require('fs').promises;
-const path = require('path');
 const router = express.Router();
 const moment = require('moment');
-
-// Use the same data file as the WhatsApp bot
-const APPOINTMENTS_PATH = path.join(__dirname, '..', 'data', 'appointments.json');
-
-async function readAppointments() {
-  try {
-    const raw = await fs.readFile(APPOINTMENTS_PATH, 'utf-8');
-    const appointments = JSON.parse(raw || '[]');
-    return appointments;
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
-}
-
-async function writeAppointments(appointments) {
-  await fs.writeFile(APPOINTMENTS_PATH, JSON.stringify(appointments, null, 2), 'utf-8');
-}
+const database = require('../services/database');
+const logger = require('../services/logger');
 
 // GET /api/appointments - list all appointments
 router.get('/', async (req, res) => {
   try {
-    const appointments = await readAppointments();
+    const appointments = await database.query(`
+      SELECT * FROM appointments 
+      ORDER BY appointment_date DESC 
+      LIMIT 100
+    `);
     
-    // Transform WhatsApp bot data to frontend format
-    const transformedAppointments = appointments.map(appt => {
-      // Parse the slot to get date and time
-      const slotMatch = appt.slot.match(/(\w+)\s+(\d{1,2}(:\d{2})?\s*(am|pm))/i);
-      let startTime, endTime;
-      
-      if (slotMatch) {
-        const day = slotMatch[1];
-        const time = slotMatch[2];
-        
-        // Convert to next occurrence of that day
-        const now = moment();
-        let targetDate = moment().day(day);
-        if (targetDate.isBefore(now)) {
-          targetDate.add(1, 'week');
-        }
-        
-        // Parse time and set to target date
-        const timeStr = time.replace(/\s+/g, '');
-        const parsedTime = moment(timeStr, ['h:mma', 'h:mm a', 'ha', 'h a'], true);
-        
-        if (parsedTime.isValid()) {
-          targetDate.hour(parsedTime.hour());
-          targetDate.minute(parsedTime.minute());
-          startTime = targetDate.toISOString();
-          endTime = targetDate.add(2, 'hours').toISOString(); // 2-hour slot
-        }
-      }
-      
-      return {
-        id: appt.user || `appt_${Date.now()}`,
-        startTime: startTime || new Date().toISOString(),
-        endTime: endTime || new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-        title: `Appointment - ${appt.worker || 'Unassigned'}`,
-        metadata: {
-          name: appt.name || 'Unknown',
-          phone: appt.phone || 'Unknown',
-          email: appt.email || 'Unknown',
-          address: appt.address || 'Unknown',
-          areas: appt.areas || 'Unknown',
-          petIssue: appt.petIssue || 'Unknown',
-          slot: appt.slot || 'Unknown',
-          worker: appt.worker || 'Unassigned',
-          user: appt.user || 'Unknown'
-        }
-      };
-    });
+    // Transform database data to frontend format
+    const transformedAppointments = appointments.map(appt => ({
+      id: appt.id,
+      customer_name: appt.customer_name || appt.name || 'Unknown',
+      phone: appt.phone || appt.phone_number || 'Unknown',
+      email: appt.email || 'Unknown',
+      address: appt.address || 'Unknown',
+      areas: appt.areas || 'Unknown',
+      pet_issue: appt.pet_issue || appt.petIssue || 'Unknown',
+      appointment_date: appt.appointment_date || appt.slot || new Date().toISOString(),
+      service: appt.service || 'Steam Cleaning',
+      status: appt.status || 'Pending',
+      worker: appt.worker || 'Unassigned',
+      notes: appt.notes || '',
+      created_at: appt.created_at || new Date().toISOString()
+    }));
     
+    logger.info(`Retrieved ${transformedAppointments.length} appointments`);
     return res.json(transformedAppointments);
   } catch (err) {
-    console.error('Error reading appointments:', err);
+    logger.error('Error reading appointments:', err);
     return res.status(500).json({ error: 'Failed to read appointments' });
+  }
+});
+
+// GET /api/appointments/stats - get appointment statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    
+    const [totalResult, todayResult, pendingResult, confirmedResult] = await Promise.all([
+      database.get('SELECT COUNT(*) as count FROM appointments'),
+      database.get('SELECT COUNT(*) as count FROM appointments WHERE DATE(appointment_date) = ?', [today]),
+      database.get('SELECT COUNT(*) as count FROM appointments WHERE status = ? OR status IS NULL', ['Pending']),
+      database.get('SELECT COUNT(*) as count FROM appointments WHERE status = ?', ['Confirmed'])
+    ]);
+    
+    const stats = {
+      total: totalResult?.count || 0,
+      today: todayResult?.count || 0,
+      pending: pendingResult?.count || 0,
+      confirmed: confirmedResult?.count || 0
+    };
+    
+    logger.info('Retrieved appointment statistics:', stats);
+    return res.json(stats);
+  } catch (err) {
+    logger.error('Error reading appointment stats:', err);
+    return res.status(500).json({ error: 'Failed to read appointment statistics' });
   }
 });
 
 // POST /api/appointments - create new appointment (for admin use)
 router.post('/', async (req, res) => {
   try {
-    const { startTime, endTime, title, metadata } = req.body;
+    const { 
+      customer_name, 
+      phone, 
+      email, 
+      address, 
+      areas, 
+      pet_issue, 
+      appointment_date, 
+      service, 
+      worker, 
+      notes 
+    } = req.body;
     
-    if (!startTime || !endTime) {
-      return res.status(400).json({ error: 'startTime and endTime required' });
+    if (!customer_name || !phone || !appointment_date) {
+      return res.status(400).json({ 
+        error: 'customer_name, phone, and appointment_date are required' 
+      });
     }
     
-    const appointments = await readAppointments();
+    const result = await database.run(`
+      INSERT INTO appointments (
+        customer_name, phone, email, address, areas, pet_issue, 
+        appointment_date, service, worker, notes, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, [
+      customer_name, phone, email || '', address || '', areas || '', 
+      pet_issue || '', appointment_date, service || 'Steam Cleaning', 
+      worker || 'Unassigned', notes || '', 'Pending'
+    ]);
+    
     const newAppointment = {
-      user: `admin_${Date.now()}`,
-      slot: `${moment(startTime).format('dddd h:mma')}`,
-      worker: metadata?.worker || 'Unassigned',
-      name: metadata?.name || 'Admin Created',
-      phone: metadata?.phone || 'N/A',
-      email: metadata?.email || 'N/A',
-      address: metadata?.address || 'N/A',
-      areas: metadata?.areas || 'N/A',
-      petIssue: metadata?.petIssue || 'N/A'
+      id: result.lastID,
+      customer_name,
+      phone,
+      email,
+      address,
+      areas,
+      pet_issue,
+      appointment_date,
+      service,
+      worker,
+      notes,
+      status: 'Pending',
+      created_at: new Date().toISOString()
     };
     
-    appointments.push(newAppointment);
-    await writeAppointments(appointments);
-    
+    logger.info('Created new appointment:', newAppointment);
     return res.status(201).json(newAppointment);
   } catch (err) {
-    console.error('Error creating appointment:', err);
+    logger.error('Error creating appointment:', err);
     return res.status(500).json({ error: 'Failed to create appointment' });
+  }
+});
+
+// PUT /api/appointments/:id - update appointment
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Build dynamic update query
+    const fields = [];
+    const values = [];
+    
+    Object.keys(updateData).forEach(key => {
+      if (['customer_name', 'phone', 'email', 'address', 'areas', 'pet_issue', 
+           'appointment_date', 'service', 'worker', 'notes', 'status'].includes(key)) {
+        fields.push(`${key} = ?`);
+        values.push(updateData[key]);
+      }
+    });
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    values.push(id);
+    
+    const result = await database.run(`
+      UPDATE appointments 
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, values);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+    
+    logger.info(`Updated appointment ${id}`);
+    return res.json({ message: 'Appointment updated successfully' });
+  } catch (err) {
+    logger.error('Error updating appointment:', err);
+    return res.status(500).json({ error: 'Failed to update appointment' });
   }
 });
 
@@ -119,18 +169,17 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const appointments = await readAppointments();
     
-    const filteredAppointments = appointments.filter(appt => appt.user !== id);
+    const result = await database.run('DELETE FROM appointments WHERE id = ?', [id]);
     
-    if (filteredAppointments.length === appointments.length) {
+    if (result.changes === 0) {
       return res.status(404).json({ error: 'Appointment not found' });
     }
     
-    await writeAppointments(filteredAppointments);
+    logger.info(`Deleted appointment ${id}`);
     return res.json({ message: 'Appointment deleted successfully' });
   } catch (err) {
-    console.error('Error deleting appointment:', err);
+    logger.error('Error deleting appointment:', err);
     return res.status(500).json({ error: 'Failed to delete appointment' });
   }
 });
