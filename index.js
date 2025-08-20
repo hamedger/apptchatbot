@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const slowDown = require('express-slow-down');
 const compression = require('compression');
+const path = require('path');
 require('dotenv').config();
 
 // Import services
@@ -112,7 +113,21 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/auth', authRouter);
 
 // Serve static files from public directory (after API routes)
-app.use(express.static('public'));
+app.use(express.static('public', {
+  index: false, // Don't serve index.html by default
+  setHeaders: (res, path) => {
+    logger.info(`Serving static file: ${path}`);
+  }
+}));
+
+// Explicit route for admin page
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 // 404 handler - catch all unmatched routes (after static files)
 app.use((req, res) => {
