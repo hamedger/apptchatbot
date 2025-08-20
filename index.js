@@ -197,7 +197,7 @@ const initializeApp = async () => {
     
     // Start server
     const port = process.env.PORT || 3000;
-    const host = process.env.HOST || 'localhost';
+    const host = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for production
     
     const server = app.listen(port, host, () => {
       logger.info(`🚀 Server running on http://${host}:${port}`);
