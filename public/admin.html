@@ -393,10 +393,15 @@
 
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔐 Admin page loaded');
+            console.log('🔐 Auth token:', authToken);
+            
             if (authToken) {
+                console.log('🔐 Token found, showing dashboard');
                 showDashboard();
                 loadDashboardData();
             } else {
+                console.log('🔐 No token, showing login form');
                 showLogin();
             }
         });
@@ -404,9 +409,11 @@
         // Login form submission
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('🔐 Login form submitted');
             
             const username = document.getElementById('username').value;
             const password = document.querySelector('input[name="password"]').value;
+            console.log('🔐 Username:', username, 'Password length:', password.length);
             
             try {
                 const response = await fetch('/api/auth/login', {
