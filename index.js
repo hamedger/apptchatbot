@@ -96,6 +96,25 @@ const speedLimiter = slowDown({
 app.use(limiter);
 app.use(speedLimiter);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Arlington Steamers WhatsApp Appointment Bot',
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    endpoints: {
+      admin: '/admin',
+      whatsapp: '/whatsapp',
+      health: '/healthz',
+      api: {
+        auth: '/api/auth',
+        appointments: '/api/appointments'
+      }
+    },
+    documentation: 'Access admin dashboard at /admin'
+  });
+});
+
 // Health check endpoint
 app.get('/healthz', (req, res) => {
   res.status(200).json({
