@@ -1,279 +1,305 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const database = require('./database');
-const logger = require('./logger');
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const router = express.Router();
+const authService = require('../services/auth');
+const { authenticateToken, requireAdmin, authRateLimit, logAuthAttempt } = require('../middleware/auth');
+const logger = require('../services/logger');
 
-class AuthService {
-  constructor() {
-    this.jwtSecret = process.env.JWT_SECRET;
-    this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
-    this.bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
-    
-    if (!this.jwtSecret) {
-      logger.error('JWT_SECRET environment variable is required');
-      process.exit(1);
-    }
-  }
-
-  /**
-   * Hash a password using bcrypt
-   */
-  async hashPassword(password) {
-    try {
-      return await bcrypt.hash(password, this.bcryptRounds);
-    } catch (error) {
-      logger.error('Password hashing error:', error);
-      throw new Error('Password hashing failed');
-    }
-  }
-
-  /**
-   * Compare a password with its hash
-   */
-  async comparePassword(password, hash) {
-    try {
-      return await bcrypt.compare(password, hash);
-    } catch (error) {
-      logger.error('Password comparison error:', error);
-      throw new Error('Password comparison failed');
-    }
-  }
-
-  /**
-   * Generate JWT token
-   */
-  generateToken(user) {
-    try {
-      const payload = {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        iat: Date.now()
-      };
-
-      return jwt.sign(payload, this.jwtSecret, {
-        expiresIn: this.jwtExpiresIn
+/**
+ * POST /auth/login - User login
+ */
+router.post('/login', [
+  authRateLimit,
+  logAuthAttempt,
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
       });
-    } catch (error) {
-      logger.error('Token generation error:', error);
-      throw new Error('Token generation failed');
     }
-  }
 
-  /**
-   * Verify JWT token
-   */
-  verifyToken(token) {
-    try {
-      return jwt.verify(token, this.jwtSecret);
-    } catch (error) {
-      logger.error('Token verification error:', error);
-      throw new Error('Invalid or expired token');
+    const { username, password } = req.body;
+
+    // Authenticate user
+    const result = await authService.authenticateUser(username, password);
+
+    logger.info(`Successful login: ${username}`);
+
+    res.json({
+      message: 'Login successful',
+      user: result.user,
+      token: result.token
+    });
+
+  } catch (error) {
+    logger.warn(`Failed login attempt for username: ${req.body.username}, Error: ${error.message}`);
+    
+    res.status(401).json({
+      error: 'Authentication failed',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /auth/register - User registration (admin only)
+ */
+router.post('/register', [
+  authenticateToken,
+  requireAdmin,
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
+  body('role')
+    .optional()
+    .isIn(['admin', 'user'])
+    .withMessage('Role must be either admin or user')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
     }
+
+    const { username, password, role = 'user' } = req.body;
+
+    // Create user
+    const user = await authService.createUser(username, password, role);
+
+    logger.info(`User registered by admin ${req.user.username}: ${username} with role: ${role}`);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user
+    });
+
+  } catch (error) {
+    logger.error(`User registration error: ${error.message}`);
+    
+    res.status(400).json({
+      error: 'Registration failed',
+      message: error.message
+    });
   }
+});
 
-  /**
-   * Create a new user
-   */
-  async createUser(username, password, role = 'admin') {
-    try {
-      // Check if user already exists
-      const existingUser = await database.get(
-        'SELECT id FROM users WHERE username = ?',
-        [username]
-      );
+/**
+ * POST /auth/logout - User logout (client-side token removal)
+ */
+router.post('/logout', authenticateToken, (req, res) => {
+  try {
+    logger.info(`User logged out: ${req.user.username}`);
+    
+    res.json({
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    logger.error('Logout error:', error);
+    res.status(500).json({
+      error: 'Logout failed',
+      message: 'An error occurred during logout'
+    });
+  }
+});
 
-      if (existingUser) {
-        throw new Error('Username already exists');
+/**
+ * GET /auth/profile - Get current user profile
+ */
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await authService.getUserById(req.user.id);
+    
+    res.json({
+      user
+    });
+  } catch (error) {
+    logger.error('Profile retrieval error:', error);
+    res.status(500).json({
+      error: 'Profile retrieval failed',
+      message: 'An error occurred while retrieving your profile'
+    });
+  }
+});
+
+/**
+ * PUT /auth/profile - Update user profile
+ */
+router.put('/profile', [
+  authenticateToken,
+  body('username')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    // For now, only username updates are supported
+    // Password changes should use a separate endpoint
+    const { username } = req.body;
+
+    if (username) {
+      // Check if username is already taken
+      const existingUser = await authService.getUserById(req.user.id);
+      if (existingUser.username !== username) {
+        // Update username logic would go here
+        logger.info(`Username update requested by user: ${req.user.username} to: ${username}`);
       }
-
-      // Hash password
-      const passwordHash = await this.hashPassword(password);
-      const userId = uuidv4();
-
-      // Insert user
-      await database.run(
-        'INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)',
-        [userId, username, passwordHash, role]
-      );
-
-      logger.info(`User created: ${username} with role: ${role}`);
-      
-      return {
-        id: userId,
-        username,
-        role,
-        created_at: new Date().toISOString()
-      };
-    } catch (error) {
-      logger.error('User creation error:', error);
-      throw error;
     }
+
+    res.json({
+      message: 'Profile updated successfully'
+    });
+
+  } catch (error) {
+    logger.error('Profile update error:', error);
+    res.status(500).json({
+      error: 'Profile update failed',
+      message: 'An error occurred while updating your profile'
+    });
   }
+});
 
-  /**
-   * Authenticate user login
-   */
-  async authenticateUser(username, password) {
-    try {
-      // Get user from database
-      const user = await database.get(
-        'SELECT * FROM users WHERE username = ?',
-        [username]
-      );
-
-      if (!user) {
-        throw new Error('Invalid credentials');
-      }
-
-      // Verify password
-      const isValidPassword = await this.comparePassword(password, user.password_hash);
-      if (!isValidPassword) {
-        throw new Error('Invalid credentials');
-      }
-
-      // Update last login
-      await database.run(
-        'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-        [user.id]
-      );
-
-      // Generate token
-      const token = this.generateToken(user);
-
-      logger.info(`User authenticated: ${username}`);
-
-      return {
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role
-        },
-        token
-      };
-    } catch (error) {
-      logger.error('Authentication error:', error);
-      throw error;
+/**
+ * PUT /auth/change-password - Change user password
+ */
+router.put('/change-password', [
+  authenticateToken,
+  body('currentPassword')
+    .notEmpty()
+    .withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('New password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('New password must contain at least one lowercase letter, one uppercase letter, and one number')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
     }
+
+    const { currentPassword, newPassword } = req.body;
+
+    // Change password
+    await authService.changePassword(req.user.id, currentPassword, newPassword);
+
+    logger.info(`Password changed for user: ${req.user.username}`);
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    logger.error(`Password change error for user ${req.user.username}: ${error.message}`);
+    
+    res.status(400).json({
+      error: 'Password change failed',
+      message: error.message
+    });
   }
+});
 
-  /**
-   * Get user by ID
-   */
-  async getUserById(userId) {
-    try {
-      const user = await database.get(
-        'SELECT id, username, role, created_at, last_login FROM users WHERE id = ?',
-        [userId]
-      );
+/**
+ * GET /auth/users - List all users (admin only)
+ */
+router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await authService.listUsers();
+    
+    res.json({
+      users
+    });
+  } catch (error) {
+    logger.error('User list retrieval error:', error);
+    res.status(500).json({
+      error: 'User list retrieval failed',
+      message: 'An error occurred while retrieving the user list'
+    });
+  }
+});
 
-      if (!user) {
-        throw new Error('User not found');
-      }
+/**
+ * DELETE /auth/users/:id - Delete user (admin only)
+ */
+router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      return user;
-    } catch (error) {
-      logger.error('Get user error:', error);
-      throw error;
+    // Prevent admin from deleting themselves
+    if (id === req.user.id) {
+      return res.status(400).json({
+        error: 'Cannot delete self',
+        message: 'You cannot delete your own account'
+      });
     }
+
+    await authService.deleteUser(id);
+
+    logger.info(`User deleted by admin ${req.user.username}: ${id}`);
+
+    res.json({
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error(`User deletion error: ${error.message}`);
+    
+    res.status(400).json({
+      error: 'User deletion failed',
+      message: error.message
+    });
   }
+});
 
-  /**
-   * Change user password
-   */
-  async changePassword(userId, currentPassword, newPassword) {
-    try {
-      // Get user with password hash
-      const user = await database.get(
-        'SELECT * FROM users WHERE id = ?',
-        [userId]
-      );
+/**
+ * GET /auth/verify - Verify token validity
+ */
+router.get('/verify', authenticateToken, (req, res) => {
+  res.json({
+    valid: true,
+    user: req.user
+  });
+});
 
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Verify current password
-      const isValidPassword = await this.comparePassword(currentPassword, user.password_hash);
-      if (!isValidPassword) {
-        throw new Error('Current password is incorrect');
-      }
-
-      // Hash new password
-      const newPasswordHash = await this.hashPassword(newPassword);
-
-      // Update password
-      await database.run(
-        'UPDATE users SET password_hash = ? WHERE id = ?',
-        [newPasswordHash, userId]
-      );
-
-      logger.info(`Password changed for user: ${user.username}`);
-      return true;
-    } catch (error) {
-      logger.error('Password change error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete user
-   */
-  async deleteUser(userId) {
-    try {
-      const result = await database.run(
-        'DELETE FROM users WHERE id = ?',
-        [userId]
-      );
-
-      if (result.changes === 0) {
-        throw new Error('User not found');
-      }
-
-      logger.info(`User deleted: ${userId}`);
-      return true;
-    } catch (error) {
-      logger.error('User deletion error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * List all users (admin only)
-   */
-  async listUsers() {
-    try {
-      const users = await database.query(
-        'SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at DESC'
-      );
-
-      return users;
-    } catch (error) {
-      logger.error('List users error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Initialize default admin user
-   */
-  async initializeDefaultAdmin() {
-    try {
-      const adminExists = await database.get(
-        'SELECT id FROM users WHERE role = ?',
-        ['admin']
-      );
-
-      if (!adminExists) {
-        const defaultPassword = 'admin123'; // Change this in production!
-        await this.createUser('admin', defaultPassword, 'admin');
-        logger.warn('Default admin user created with password: admin123 - CHANGE THIS IMMEDIATELY!');
-      }
-    } catch (error) {
-      logger.error('Default admin initialization error:', error);
-    }
-  }
-}
-
-module.exports = new AuthService();
+module.exports = router;
