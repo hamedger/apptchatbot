@@ -62,7 +62,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-
 // Body parsing middleware
 // Important: Twilio webhooks use application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
@@ -112,7 +111,10 @@ app.use('/whatsapp', whatsappRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/auth', authRouter);
 
-// 404 handler - catch all unmatched routes
+// Serve static files from public directory (after API routes)
+app.use(express.static('public'));
+
+// 404 handler - catch all unmatched routes (after static files)
 app.use((req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
