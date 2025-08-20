@@ -12,7 +12,7 @@ require('dotenv').config();
 // Import services
 const logger = require('./services/logger');
 const database = require('./services/database');
-const authService = require('./services/auth');
+const authService = require('./services/authService');
 
 // Import routes
 const whatsappRouter = require('./routes/whatsapp');
