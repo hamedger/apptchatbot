@@ -152,8 +152,8 @@ app.use(express.static('public', {
            app.get('/admin-dashboard', (req, res) => {
              res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
            });
-
-// 404 handler - catch all unmatched routes (after static files)
+           
+           // 404 handler - catch all unmatched routes (after static files)
 app.use((req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
