@@ -39,9 +39,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Store token
                     localStorage.setItem('authToken', data.token);
                     
-                    // Show success message
+                    // Redirect to dashboard
                     setTimeout(() => {
-                        alert('Login successful! You can now access the admin dashboard.');
+                        window.location.href = '/admin-dashboard';
                     }, 1000);
                 } else {
                     document.getElementById('msg').innerHTML = '<div class="message error">❌ Login failed: ' + (data.message || 'Unknown error') + '</div>';

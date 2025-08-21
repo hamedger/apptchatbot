@@ -139,14 +139,19 @@ app.use(express.static('public', {
   }
 }));
 
-// Explicit route for admin page
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
+           // Explicit route for admin page
+           app.get('/admin', (req, res) => {
+             res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+           });
+           
+           app.get('/admin.html', (req, res) => {
+             res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+           });
+           
+           // Admin dashboard route
+           app.get('/admin-dashboard', (req, res) => {
+             res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
+           });
 
 // 404 handler - catch all unmatched routes (after static files)
 app.use((req, res) => {
