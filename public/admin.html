@@ -1,180 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 SIMPLE ADMIN LOGIN - Arlington Steamers</title>
+    <title>Simple Admin Login</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        h1 {
-            text-align: center;
-            color: #1a73e8;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #1557b0;
-        }
-        .message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-            font-size: 14px;
-            margin-top: 20px;
-        }
+        body { font-family: Arial; padding: 50px; text-align: center; }
+        .login { max-width: 300px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007cba; color: white; border: none; cursor: pointer; }
+        .message { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>🔐 SIMPLE ADMIN LOGIN - V2</h1>
-        
-        <div id="message"></div>
-        
+    <div class="login">
+        <h2>Admin Login</h2>
+        <div id="msg"></div>
         <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
-        
-        <div class="info">
-            <strong>Default:</strong> admin / admin123<br>
-            <small>Change this password after first login!</small>
-        </div>
+        <p><small>Default: admin / admin123</small></p>
     </div>
 
     <script>
-        console.log('🔐 Simple admin page loaded');
+        console.log('Page loaded');
         
-        const loginForm = document.getElementById('loginForm');
-        const messageDiv = document.getElementById('message');
-        
-        function showMessage(text, type) {
-            messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
-        }
-        
-        function clearMessage() {
-            messageDiv.innerHTML = '';
-        }
-        
-        loginForm.addEventListener('submit', async function(e) {
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            console.log('🔐 Form submitted');
-            
-            clearMessage();
-            showMessage('Logging in...', 'info');
+            console.log('Form submitted');
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            console.log('🔐 Username:', username);
-            console.log('🔐 Password length:', password.length);
+            console.log('Username:', username);
+            console.log('Password length:', password.length);
             
-            try {
-                console.log('🔐 Making API call to /api/auth/login');
+            // Show loading message
+            document.getElementById('msg').innerHTML = '<div class="message">Logging in...</div>';
+            
+            // Make API call
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
                 
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                console.log('🔐 Response status:', response.status);
-                console.log('🔐 Response headers:', response.headers);
-                
-                const data = await response.json();
-                console.log('🔐 Response data:', data);
-                
-                if (response.ok) {
-                    showMessage('✅ Login successful! Redirecting...', 'success');
-                    console.log('🔐 Login successful, token:', data.token);
+                if (data.token) {
+                    document.getElementById('msg').innerHTML = '<div class="message success">✅ Login successful!</div>';
+                    console.log('Login successful!');
                     
                     // Store token
                     localStorage.setItem('authToken', data.token);
-                    localStorage.setItem('currentUser', JSON.stringify(data.user));
                     
-                    // Redirect to dashboard
+                    // Redirect to dashboard (or show success)
                     setTimeout(() => {
-                        window.location.href = '/admin-dashboard';
+                        alert('Login successful! You can now access the admin dashboard.');
                     }, 1000);
                 } else {
-                    showMessage(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
-                    console.log('🔐 Login failed:', data);
+                    document.getElementById('msg').innerHTML = '<div class="message error">❌ Login failed: ' + (data.message || 'Unknown error') + '</div>';
+                    console.log('Login failed:', data);
                 }
-            } catch (error) {
-                console.error('🔐 Network error:', error);
-                showMessage('❌ Network error. Please try again.', 'error');
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('msg').innerHTML = '<div class="message error">❌ Network error: ' + error.message + '</div>';
+            });
         });
         
-        console.log('🔐 Event listener attached');
+        console.log('Event listener attached');
     </script>
 </body>
 </html>
