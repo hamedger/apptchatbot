@@ -73,5 +73,17 @@
     "user": "whatsapp:+12489075504",
     "slot": "Monday 12pm",
     "worker": "Charlie"
+  },
+  {
+    "user": "testuser",
+    "slot": "Tuesday 14:00pm",
+    "worker": "Alice",
+    "timestamp": "2025-08-21T14:42:02.437Z"
+  },
+  {
+    "user": "testuser",
+    "slot": "Friday 14:00pm",
+    "worker": "Bob",
+    "timestamp": "2025-08-21T14:56:56.251Z"
   }
 ]

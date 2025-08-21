@@ -22,6 +22,8 @@ router.post('/', async (req, res) => {
 
     console.log(`📥 Incoming from ${from}: "${incomingRaw}"`);
     console.log(`🔄 User step: ${userState.step}`);
+    console.log(`🔍 Session key: "${from}", Session data:`, userState);
+    console.log(`🔍 Raw session data for key "${from}":`, session.getAllSessions());
     
     // 0. Reset flow if user says hi or hello
     if (incomingMsg.toLowerCase().includes('hi') || incomingMsg.toLowerCase().includes('hello')) {
@@ -87,8 +89,10 @@ router.post('/', async (req, res) => {
     }
 
     if (userState.step === 'petIssue') {
+      console.log('🔍 Processing petIssue step:', { from, incomingMsg, currentStep: userState.step });
       session.updateSession(from, 'petIssue', incomingMsg);
       session.updateSession(from, 'step', 'slot');
+      console.log('🔍 Updated step to slot, new session:', session.getSession(from));
       
       const slots = scheduler.getAvailableSlots();
       twiml.message(
@@ -101,6 +105,7 @@ router.post('/', async (req, res) => {
     }
 
     // 3. Handle final booking
+    console.log('🔍 Checking booking condition:', { step: userState.step, message: incomingMsg, startsWithBook: incomingMsg.toLowerCase().startsWith('book') });
     if (userState.step === 'slot' && incomingMsg.toLowerCase().startsWith('book')) {
       const result = scheduler.bookSlot(incomingMsg, from);
       
@@ -110,6 +115,34 @@ router.post('/', async (req, res) => {
         // Add slot and worker to session for admin notification
         session.updateSession(from, 'slot', result.slot);
         session.updateSession(from, 'worker', result.worker);
+        
+        // Save appointment to database
+        try {
+          const database = require('../services/database');
+          const appointmentId = `appt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          await database.run(`
+            INSERT INTO appointments (
+              id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `, [
+            appointmentId,
+            from,
+            result.slot,
+            result.worker,
+            details.name,
+            details.phone,
+            details.email,
+            details.address,
+            details.areas,
+            details.petIssue,
+            'confirmed'
+          ]);
+          
+          console.log('✅ Appointment saved to database:', appointmentId);
+        } catch (error) {
+          console.error('❌ Failed to save appointment to database:', error);
+        }
         
         const msg = twiml.message(
           `✅ *Booking Confirmed!*\n\n` +
@@ -173,6 +206,7 @@ router.post('/', async (req, res) => {
     }
 
     // 6. Default fallback - show menu again
+    console.log('🔍 Fallback condition:', { step: userState.step, stepNotStart: userState.step !== 'start' });
     if (userState.step !== 'start') {
       session.updateSession(from, 'step', 'menu');
       const details = session.getSession(from);

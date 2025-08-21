@@ -10,24 +10,24 @@ router.get('/', async (req, res) => {
   try {
     const appointments = await database.query(`
       SELECT * FROM appointments 
-      ORDER BY appointment_date DESC 
+      ORDER BY slot DESC 
       LIMIT 100
     `);
     
     // Transform database data to frontend format
     const transformedAppointments = appointments.map(appt => ({
       id: appt.id,
-      customer_name: appt.customer_name || appt.name || 'Unknown',
-      phone: appt.phone || appt.phone_number || 'Unknown',
+      customer_name: appt.name || 'Unknown',
+      phone: appt.phone || 'Unknown',
       email: appt.email || 'Unknown',
       address: appt.address || 'Unknown',
       areas: appt.areas || 'Unknown',
-      pet_issue: appt.pet_issue || appt.petIssue || 'Unknown',
-      appointment_date: appt.appointment_date || appt.slot || new Date().toISOString(),
-      service: appt.service || 'Steam Cleaning',
+      pet_issue: appt.petIssue || 'Unknown',
+      appointment_date: appt.slot || new Date().toISOString(),
+      service: 'Steam Cleaning',
       status: appt.status || 'Pending',
       worker: appt.worker || 'Unassigned',
-      notes: appt.notes || '',
+      notes: '',
       created_at: appt.created_at || new Date().toISOString()
     }));
     
@@ -46,7 +46,7 @@ router.get('/stats', async (req, res) => {
     
     const [totalResult, todayResult, pendingResult, confirmedResult] = await Promise.all([
       database.get('SELECT COUNT(*) as count FROM appointments'),
-      database.get('SELECT COUNT(*) as count FROM appointments WHERE DATE(appointment_date) = ?', [today]),
+      database.get('SELECT COUNT(*) as count FROM appointments WHERE DATE(slot) = ?', [today]),
       database.get('SELECT COUNT(*) as count FROM appointments WHERE status = ? OR status IS NULL', ['Pending']),
       database.get('SELECT COUNT(*) as count FROM appointments WHERE status = ?', ['Confirmed'])
     ]);
@@ -90,13 +90,20 @@ router.post('/', async (req, res) => {
     
     const result = await database.run(`
       INSERT INTO appointments (
-        customer_name, phone, email, address, areas, pet_issue, 
-        appointment_date, service, worker, notes, status, created_at
+        id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `, [
-      customer_name, phone, email || '', address || '', areas || '', 
-      pet_issue || '', appointment_date, service || 'Steam Cleaning', 
-      worker || 'Unassigned', notes || '', 'Pending'
+      `appt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      'admin_created',
+      appointment_date,
+      worker || 'Unassigned',
+      customer_name,
+      phone,
+      email || '',
+      address || '',
+      areas || '',
+      pet_issue || '',
+      'Pending'
     ]);
     
     const newAppointment = {
@@ -134,8 +141,8 @@ router.put('/:id', async (req, res) => {
     const values = [];
     
     Object.keys(updateData).forEach(key => {
-      if (['customer_name', 'phone', 'email', 'address', 'areas', 'pet_issue', 
-           'appointment_date', 'service', 'worker', 'notes', 'status'].includes(key)) {
+      if (['name', 'phone', 'email', 'address', 'areas', 'petIssue', 
+           'slot', 'worker', 'status'].includes(key)) {
         fields.push(`${key} = ?`);
         values.push(updateData[key]);
       }

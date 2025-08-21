@@ -41,8 +41,11 @@ async function saveSessions() {
  * @returns {object} - session object { step, name?, phone?, etc. }
  */
 function getSession(user) {
-  if (!userSessions[user]) {
-    userSessions[user] = {
+  // Normalize the user key to handle different formats
+  const normalizedUser = user.replace(/\+/g, ' ').trim();
+  
+  if (!userSessions[normalizedUser]) {
+    userSessions[normalizedUser] = {
       step: 'name',
       createdAt: new Date().toISOString(),
       lastActivity: new Date().toISOString()
@@ -50,7 +53,7 @@ function getSession(user) {
     // Save new session
     saveSessions();
   }
-  return userSessions[user];
+  return userSessions[normalizedUser];
 }
 
 /**
@@ -74,7 +77,9 @@ function updateSession(user, key, value) {
  * @param {string} user - WhatsApp user ID or phone number
  */
 function clearSession(user) {
-  delete userSessions[user];
+  // Normalize the user key to handle different formats
+  const normalizedUser = user.replace(/\+/g, ' ').trim();
+  delete userSessions[normalizedUser];
   // Save updated sessions
   saveSessions();
 }

@@ -177,6 +177,156 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        /* Debug: Make sure modal is visible when shown */
+        .modal.show {
+            display: block !important;
+        }
+        
+        /* Debug: Add border to modal for visibility */
+        .modal {
+            border: 2px solid red;
+        }
+        
+        .modal-content {
+            border: 2px solid blue;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: #34495e;
+            color: white;
+            padding: 20px 25px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #ecf0f1;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
             color: white;
         }
 
@@ -238,6 +388,25 @@
             .appointments-table td {
                 padding: 10px 8px;
             }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
@@ -246,7 +415,7 @@
         <h1>🏥 Arlington Steamers - Admin Dashboard</h1>
         <div class="user-info">
             <span>Welcome, <strong id="username">Admin</strong></span>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
         </div>
     </div>
 
@@ -275,7 +444,12 @@
         <div class="dashboard-section">
             <div class="section-header">
                 <h3 class="section-title">📅 Recent Appointments</h3>
-                <button class="add-appointment-btn" onclick="refreshAppointments()">🔄 Refresh</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="add-appointment-btn" id="jsTestBtn" style="background: #2ecc71;">🧪 JS Test</button>
+                    <button class="add-appointment-btn" id="refreshBtn">🔄 Refresh</button>
+                    <button class="add-appointment-btn" id="testModalBtn" style="background: #e74c3c;">🧪 Test Modal</button>
+                    <button class="add-appointment-btn" id="debugBtn" style="background: #9b59b6;">🔍 Debug</button>
+                </div>
             </div>
             <div id="appointmentsTable">
                 <div class="loading">
@@ -284,8 +458,100 @@
                 </div>
             </div>
         </div>
+
+        <!-- Edit Appointment Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>✏️ Edit Appointment</h3>
+                    <span class="close" id="closeModalBtn">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editCustomerName">Customer Name</label>
+                                <input type="text" id="editCustomerName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editPhone">Phone</label>
+                                <input type="tel" id="editPhone" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editEmail">Email</label>
+                                <input type="email" id="editEmail">
+                            </div>
+                            <div class="form-group">
+                                <label for="editWorker">Worker</label>
+                                <select id="editWorker" required>
+                                    <option value="Alice">Alice</option>
+                                    <option value="Bob">Bob</option>
+                                    <option value="Charlie">Charlie</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editDate">Date</label>
+                                <input type="date" id="editDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editTime">Time</label>
+                                <select id="editTime" required>
+                                    <option value="08:00">8:00 AM</option>
+                                    <option value="09:00">9:00 AM</option>
+                                    <option value="10:00">10:00 AM</option>
+                                    <option value="11:00">11:00 AM</option>
+                                    <option value="12:00">12:00 PM</option>
+                                    <option value="13:00">1:00 PM</option>
+                                    <option value="14:00">2:00 PM</option>
+                                    <option value="15:00">3:00 PM</option>
+                                    <option value="16:00">4:00 PM</option>
+                                    <option value="17:00">5:00 PM</option>
+                                    <option value="18:00">6:00 PM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editAddress">Address</label>
+                                <input type="text" id="editAddress" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAreas">Areas</label>
+                                <input type="text" id="editAreas" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editPetIssue">Pet Issue</label>
+                                <select id="editPetIssue" required>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editStatus">Status</label>
+                                <select id="editStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script src="/admin-dashboard.js"></script>
+    <script src="/admin-dashboard.js?v=1.2"></script>
 </body>
 </html>
