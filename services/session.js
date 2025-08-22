@@ -41,8 +41,14 @@ async function saveSessions() {
  * @returns {object} - session object { step, name?, phone?, etc. }
  */
 function getSession(user) {
-  // Normalize the user key to handle different formats
-  const normalizedUser = user.replace(/\+/g, ' ').trim();
+  // Normalize the user key to handle different formats consistently
+  // Remove whatsapp: prefix and normalize phone number
+  let normalizedUser = user;
+  if (user.startsWith('whatsapp:')) {
+    normalizedUser = user.substring(9); // Remove 'whatsapp:' prefix
+  }
+  // Remove any + and normalize
+  normalizedUser = normalizedUser.replace(/\+/g, '').trim();
   
   if (!userSessions[normalizedUser]) {
     userSessions[normalizedUser] = {
@@ -77,8 +83,15 @@ function updateSession(user, key, value) {
  * @param {string} user - WhatsApp user ID or phone number
  */
 function clearSession(user) {
-  // Normalize the user key to handle different formats
-  const normalizedUser = user.replace(/\+/g, ' ').trim();
+  // Normalize the user key to handle different formats consistently
+  // Remove whatsapp: prefix and normalize phone number
+  let normalizedUser = user;
+  if (user.startsWith('whatsapp:')) {
+    normalizedUser = user.substring(9); // Remove 'whatsapp:' prefix
+  }
+  // Remove any + and normalize
+  normalizedUser = normalizedUser.replace(/\+/g, '').trim();
+  
   delete userSessions[normalizedUser];
   // Save updated sessions
   saveSessions();
