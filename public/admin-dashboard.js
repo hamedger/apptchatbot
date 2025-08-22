@@ -1,12 +1,6 @@
 // Admin Dashboard JavaScript
 console.log('Admin dashboard script loaded');
 
-// Global test function to verify JavaScript is working
-window.testJavaScript = function() {
-    alert('JavaScript is working!');
-    console.log('JavaScript test function called successfully');
-};
-
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard page loaded');
@@ -286,20 +280,6 @@ window.editAppointment = function(id) {
     console.log('Modal should now be visible');
 }
 
-// Test modal function
-window.testModal = function() {
-    console.log('Testing modal...');
-    const modal = document.getElementById('editModal');
-    if (modal) {
-        console.log('Modal found, showing...');
-        modal.style.display = 'block';
-        modal.classList.add('show');
-        console.log('Modal should be visible now');
-    } else {
-        console.error('Modal not found!');
-    }
-}
-
 // Close edit modal
 window.closeEditModal = function() {
     const modal = document.getElementById('editModal');
@@ -413,36 +393,15 @@ console.log('Dashboard functions loaded');
 
 // Log all globally available functions
 console.log('Global functions available:', {
-    testJavaScript: typeof window.testJavaScript,
     refreshAppointments: typeof window.refreshAppointments,
     editAppointment: typeof window.editAppointment,
     deleteAppointment: typeof window.deleteAppointment,
-    testModal: typeof window.testModal,
     closeEditModal: typeof window.closeEditModal,
     logout: typeof window.logout,
-    testBasicFunctions: typeof window.testBasicFunctions,
     loadWhatsAppMessages: typeof window.loadWhatsAppMessages,
     viewWhatsAppConversation: typeof window.viewWhatsAppConversation,
     closeWhatsAppModal: typeof window.closeWhatsAppModal
 });
-
-// Test basic functionality
-window.testBasicFunctions = function() {
-    console.log('Testing basic functions...');
-    console.log('editAppointment function:', typeof editAppointment);
-    console.log('deleteAppointment function:', typeof deleteAppointment);
-    console.log('closeEditModal function:', typeof closeEditModal);
-    console.log('testModal function:', typeof testModal);
-    
-    // Test if we can find the modal
-    const modal = document.getElementById('editModal');
-    console.log('Modal element:', modal);
-    
-    if (modal) {
-        console.log('Modal display style:', modal.style.display);
-        console.log('Modal computed style:', window.getComputedStyle(modal).display);
-    }
-};
 
 // Initialize event listeners
 function initializeEventListeners() {
@@ -650,32 +609,11 @@ function addTableEventListeners() {
 
 // Add event listeners for static buttons
 function addStaticButtonListeners() {
-    // JS Test button
-    const jsTestBtn = document.getElementById('jsTestBtn');
-    if (jsTestBtn) {
-        jsTestBtn.addEventListener('click', testJavaScript);
-        console.log('JS Test button listener added');
-    }
-    
     // Refresh button
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', refreshAppointments);
         console.log('Refresh button listener added');
-    }
-    
-    // Test Modal button
-    const testModalBtn = document.getElementById('testModalBtn');
-    if (testModalBtn) {
-        testModalBtn.addEventListener('click', testModal);
-        console.log('Test Modal button listener added');
-    }
-    
-    // Debug button
-    const debugBtn = document.getElementById('debugBtn');
-    if (debugBtn) {
-        debugBtn.addEventListener('click', testBasicFunctions);
-        console.log('Debug button listener added');
     }
     
     // Logout button
