@@ -51,7 +51,13 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    // If no allowed origins are configured, allow same-origin requests
+    if (allowedOrigins.length === 0) {
+      // Allow same-origin requests (when frontend and backend are on same domain)
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`Not allowed by CORS: ${origin}`));

@@ -111,43 +111,60 @@ const optionalAuth = (req, res, next) => {
  * Rate limiting middleware for authentication endpoints
  */
 const authRateLimit = (req, res, next) => {
-  // This would typically integrate with a rate limiting service
-  // For now, we'll use a simple in-memory approach
-  const clientIP = req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  
-  // Simple rate limiting: max 5 attempts per 15 minutes
-  if (!req.app.locals.authAttempts) {
-    req.app.locals.authAttempts = new Map();
+  try {
+    // This would typically integrate with a rate limiting service
+    // For now, we'll use a simple in-memory approach
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+    
+    // Ensure req.app.locals exists
+    if (!req.app.locals) {
+      req.app.locals = {};
+    }
+    
+    // Initialize authAttempts if it doesn't exist
+    if (!req.app.locals.authAttempts) {
+      req.app.locals.authAttempts = new Map();
+    }
+
+    const attempts = req.app.locals.authAttempts.get(clientIP) || [];
+    const recentAttempts = attempts.filter(time => now - time < 15 * 60 * 1000);
+
+    if (recentAttempts.length >= 5) {
+      logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
+      return res.status(429).json({
+        error: 'Too many attempts',
+        message: 'Too many authentication attempts. Please try again later.'
+      });
+    }
+
+    recentAttempts.push(now);
+    req.app.locals.authAttempts.set(clientIP, recentAttempts);
+
+    next();
+  } catch (error) {
+    logger.error('Rate limiting error:', error);
+    // If rate limiting fails, allow the request to proceed
+    next();
   }
-
-  const attempts = req.app.locals.authAttempts.get(clientIP) || [];
-  const recentAttempts = attempts.filter(time => now - time < 15 * 60 * 1000);
-
-  if (recentAttempts.length >= 5) {
-    logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
-    return res.status(429).json({
-      error: 'Too many attempts',
-      message: 'Too many authentication attempts. Please try again later.'
-    });
-  }
-
-  recentAttempts.push(now);
-  req.app.locals.authAttempts.set(clientIP, recentAttempts);
-
-  next();
 };
 
 /**
  * Log authentication attempts
  */
 const logAuthAttempt = (req, res, next) => {
-  const clientIP = req.ip || req.connection.remoteAddress;
-  const userAgent = req.get('User-Agent');
-  
-  logger.info(`Authentication attempt from IP: ${clientIP}, User-Agent: ${userAgent}`);
-  
-  next();
+  try {
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || 'unknown';
+    
+    logger.info(`Authentication attempt from IP: ${clientIP}, User-Agent: ${userAgent}`);
+    
+    next();
+  } catch (error) {
+    logger.error('Log auth attempt error:', error);
+    // If logging fails, allow the request to proceed
+    next();
+  }
 };
 
 module.exports = {
