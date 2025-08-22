@@ -1,16 +1,35 @@
 const moment = require('moment');
-const fs = require('fs');
-const path = require('path');
+const database = require('./database');
 
 const workers = ['Alice', 'Bob', 'Charlie'];
-const appointmentsPath = path.join(__dirname, '../data/appointments.json');
 
-function bookSlot(message, user) {
+function getAvailableSlots() {
+  // Generate available slots for the next 7 days
+  const slots = [];
+  const startDate = moment().startOf('day');
+  
+  for (let i = 0; i < 7; i++) {
+    const currentDate = startDate.clone().add(i, 'days');
+    const dayName = currentDate.format('dddd');
+    
+    // Skip weekends for now (can be made configurable)
+    if (dayName === 'Saturday' || dayName === 'Sunday') continue;
+    
+    // Generate time slots from 8am to 6pm
+    for (let hour = 8; hour <= 18; hour++) {
+      const timeSlot = moment(currentDate).hour(hour).minute(0);
+      const formattedTime = timeSlot.format('h:mmA');
+      const slot = `${dayName} ${formattedTime}`;
+      slots.push(slot);
+    }
+  }
+  
+  return slots;
+}
+
+async function bookSlot(message, user) {
   try {
-    // Read appointments inside function
-    const appointments = JSON.parse(fs.readFileSync(appointmentsPath, 'utf8'));
-
-    // Improved slot parsing with better regex
+    // Parse the booking message
     const slotMatch = message.match(/(\d{1,2}(:\d{2})?\s*(am|pm))\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
 
     if (!slotMatch) {
@@ -59,12 +78,12 @@ function bookSlot(message, user) {
     
     const slot = `${dayFormatted} ${timeFormatted}`; // e.g., "Monday 10:00am"
 
-    // Check if slot already booked
-    const existing = appointments.find(a => 
-      a.slot.toLowerCase() === slot.toLowerCase()
-    );
+    // Check if slot already booked in database
+    const existing = await database.get(`
+      SELECT COUNT(*) as count FROM appointments WHERE slot = ?
+    `, [slot]);
     
-    if (existing) {
+    if (existing.count > 0) {
       return { 
         success: false, 
         message: `Slot ${slot} is already booked. Please try another time.` 
@@ -72,20 +91,10 @@ function bookSlot(message, user) {
     }
 
     // Assign worker round-robin
-    const worker = workers[appointments.length % workers.length];
-
-    // Add new appointment
-    const newAppointment = { 
-      user, 
-      slot, 
-      worker,
-      timestamp: new Date().toISOString()
-    };
-    
-    appointments.push(newAppointment);
-
-    // Save back to file
-    fs.writeFileSync(appointmentsPath, JSON.stringify(appointments, null, 2));
+    const workerCount = await database.get(`
+      SELECT COUNT(*) as count FROM appointments
+    `);
+    const worker = workers[workerCount.count % workers.length];
 
     return { success: true, slot, worker };
     
@@ -98,38 +107,8 @@ function bookSlot(message, user) {
   }
 }
 
-function getAvailableSlots() {
-  try {
-    const appointments = JSON.parse(fs.readFileSync(appointmentsPath, 'utf8'));
-
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const times = ['8:00am', '9:00am', '10:00am', '11:00am', '12:00pm', '1:00pm', '2:00pm', '3:00pm', '4:00pm', '5:00pm', '6:00pm'];
-
-    const availability = [];
-
-    for (const day of days) {
-      const slots = times.map(time => {
-        const slot = `${day} ${time}`;
-        const isBooked = appointments.some(a => 
-          a.slot.toLowerCase() === slot.toLowerCase()
-        );
-        return ` - ${time} ${isBooked ? '❌' : '✅'}`;
-      });
-
-      availability.push(`🗓 ${day}:\n${slots.join('\n')}`);
-    }
-
-    return availability; // Array of formatted strings per day
-  } catch (error) {
-    console.error('Error in getAvailableSlots:', error);
-    return ['❌ Unable to load available slots'];
-  }
-}
-
-function isBookingRequest(message) {
-  // Improved check to see if message contains "book" and time/day indicators
-  return /book/i.test(message) && /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(message);
-}
-
-module.exports = { bookSlot, getAvailableSlots, isBookingRequest };
+module.exports = {
+  getAvailableSlots,
+  bookSlot
+};
 

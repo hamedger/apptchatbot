@@ -86,6 +86,9 @@ async function loadDashboardData() {
             console.error('Failed to load stats:', statsResponse.status);
         }
         
+        // Load WhatsApp messages
+        loadWhatsAppMessages();
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         document.getElementById('appointmentsTable').innerHTML = 
@@ -417,7 +420,10 @@ console.log('Global functions available:', {
     testModal: typeof window.testModal,
     closeEditModal: typeof window.closeEditModal,
     logout: typeof window.logout,
-    testBasicFunctions: typeof window.testBasicFunctions
+    testBasicFunctions: typeof window.testBasicFunctions,
+    loadWhatsAppMessages: typeof window.loadWhatsAppMessages,
+    viewWhatsAppConversation: typeof window.viewWhatsAppConversation,
+    closeWhatsAppModal: typeof window.closeWhatsAppModal
 });
 
 // Test basic functionality
@@ -484,6 +490,134 @@ function initializeEventListeners() {
         console.log('Modal computed display style:', window.getComputedStyle(modal).display);
     }
 }
+
+// WhatsApp Messages Functions
+window.loadWhatsAppMessages = async function() {
+    try {
+        console.log('Loading WhatsApp messages...');
+        
+        // For now, we'll create sample data since we don't have a WhatsApp messages API yet
+        const sampleMessages = [
+            {
+                id: 'whatsapp:+1234567890',
+                name: 'John Doe',
+                phone: '+1234567890',
+                lastMessage: 'Hi, I need carpet cleaning',
+                timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+                status: 'Active',
+                messages: [
+                    { type: 'user', text: 'Hi, I need carpet cleaning', time: new Date(Date.now() - 3600000) },
+                    { type: 'bot', text: 'Hello! Welcome to Arlington Steamers. What is your name?', time: new Date(Date.now() - 3500000) },
+                    { type: 'user', text: 'John Doe', time: new Date(Date.now() - 3400000) }
+                ]
+            },
+            {
+                id: 'whatsapp:+1987654321',
+                name: 'Jane Smith',
+                phone: '+1987654321',
+                lastMessage: 'What are your rates?',
+                timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+                status: 'Active',
+                messages: [
+                    { type: 'user', text: 'What are your rates?', time: new Date(Date.now() - 7200000) },
+                    { type: 'bot', text: 'Our rates start at $99 for basic cleaning. Would you like a quote?', time: new Date(Date.now() - 7100000) }
+                ]
+            }
+        ];
+        
+        // Store WhatsApp users globally for conversation access
+        window.currentWhatsAppUsers = sampleMessages;
+        
+        displayWhatsAppMessages(sampleMessages);
+        
+    } catch (error) {
+        console.error('Error loading WhatsApp messages:', error);
+        document.getElementById('whatsappMessagesTable').innerHTML = 
+            '<div class="no-data">❌ Error loading WhatsApp messages. Please try again.</div>';
+    }
+}
+
+window.displayWhatsAppMessages = function(messages) {
+    const tableContainer = document.getElementById('whatsappMessagesTable');
+    
+    if (!messages || messages.length === 0) {
+        tableContainer.innerHTML = '<div class="no-data">📭 No WhatsApp messages found</div>';
+        return;
+    }
+    
+    console.log('Displaying WhatsApp messages:', messages.length);
+    
+    const messagesHtml = messages.map(msg => `
+        <div class="whatsapp-message" onclick="viewWhatsAppConversation('${msg.id}')">
+            <div class="whatsapp-message-header">
+                <div class="whatsapp-user-info">
+                    <h4 class="whatsapp-user-name">${escapeHtml(msg.name)}</h4>
+                    <p class="whatsapp-user-phone">${escapeHtml(msg.phone)}</p>
+                </div>
+                <div class="whatsapp-timestamp">${formatDateTime(msg.timestamp)}</div>
+            </div>
+            <p class="whatsapp-message-preview">${escapeHtml(msg.lastMessage)}</p>
+        </div>
+    `).join('');
+    
+    tableContainer.innerHTML = messagesHtml;
+}
+
+window.viewWhatsAppConversation = function(userId) {
+    console.log('Viewing WhatsApp conversation for:', userId);
+    
+    // Find the user's messages
+    const user = window.currentWhatsAppUsers ? window.currentWhatsAppUsers.find(u => u.id === userId) : null;
+    
+    if (!user) {
+        alert('User not found!');
+        return;
+    }
+    
+    // Populate the modal
+    document.getElementById('whatsappUserName').textContent = user.name;
+    document.getElementById('whatsappUserPhone').textContent = user.phone;
+    document.getElementById('whatsappUserStatus').textContent = `Status: ${user.status}`;
+    
+    // Display messages
+    const messagesContainer = document.getElementById('conversationMessages');
+    const messagesHtml = user.messages.map(msg => `
+        <div class="message-bubble ${msg.type}">
+            <div>${escapeHtml(msg.text)}</div>
+            <div class="message-time">${formatTime(msg.time)}</div>
+        </div>
+    `).join('');
+    
+    messagesContainer.innerHTML = messagesHtml;
+    
+    // Show the modal
+    document.getElementById('whatsappModal').style.display = 'block';
+};
+
+window.closeWhatsAppModal = function() {
+    document.getElementById('whatsappModal').style.display = 'none';
+};
+
+window.viewAllWhatsAppMessages = function() {
+    console.log('Viewing all WhatsApp messages');
+    // This could open a full messages view or refresh the current list
+    loadWhatsAppMessages();
+};
+
+window.sendWhatsAppMessage = function() {
+    console.log('Send WhatsApp message functionality');
+    // This would integrate with Twilio to send actual WhatsApp messages
+    alert('WhatsApp message sending functionality coming soon! This will integrate with Twilio to send actual messages.');
+};
+
+window.formatTime = function(date) {
+    if (!date) return 'N/A';
+    try {
+        return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return 'N/A';
+    }
+};
 
 // Add event delegation for table buttons
 function addTableEventListeners() {
@@ -563,5 +697,37 @@ function addStaticButtonListeners() {
     if (cancelBtn) {
         cancelBtn.addEventListener('click', closeEditModal);
         console.log('Cancel button listener added');
+    }
+    
+    // WhatsApp buttons
+    const refreshWhatsAppBtn = document.getElementById('refreshWhatsAppBtn');
+    if (refreshWhatsAppBtn) {
+        refreshWhatsAppBtn.addEventListener('click', loadWhatsAppMessages);
+        console.log('Refresh WhatsApp button listener added');
+    }
+    
+    const viewAllMessagesBtn = document.getElementById('viewAllMessagesBtn');
+    if (viewAllMessagesBtn) {
+        viewAllMessagesBtn.addEventListener('click', viewAllWhatsAppMessages);
+        console.log('View All WhatsApp button listener added');
+    }
+    
+    // WhatsApp modal buttons
+    const closeWhatsAppModalBtn = document.getElementById('closeWhatsAppModalBtn');
+    if (closeWhatsAppModalBtn) {
+        closeWhatsAppModalBtn.addEventListener('click', closeWhatsAppModal);
+        console.log('Close WhatsApp modal button listener added');
+    }
+    
+    const closeConversationBtn = document.getElementById('closeConversationBtn');
+    if (closeConversationBtn) {
+        closeConversationBtn.addEventListener('click', closeWhatsAppModal);
+        console.log('Close conversation button listener added');
+    }
+    
+    const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
+    if (sendWhatsAppBtn) {
+        sendWhatsAppBtn.addEventListener('click', sendWhatsAppMessage);
+        console.log('Send WhatsApp button listener added');
     }
 }
