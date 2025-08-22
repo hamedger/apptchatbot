@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
       
       const details = session.getSession(from);
       
-      // Temporarily use simple text message instead of interactive buttons
+      // Simple text-based menu
       twiml.message(
         `👋 Welcome to Arlington Steamers Carpet Cleaning!\n\n` +
         `Name: ${details.name}\n\n` +
@@ -149,83 +149,21 @@ router.post('/', async (req, res) => {
       // Show weekly availability overview first
       const weeklyData = scheduler.getWeeklyAvailability();
       
-      const msg = twiml.message({
-        body: `📅 Great! Thank you.\n\n📅 Here's our availability for this week:`
+      // Simple text-based weekly availability
+      let availabilityText = `📅 Great! Thank you.\n\n📅 Here's our availability for this week:\n\n`;
+      weeklyData.forEach((day, index) => {
+        availabilityText += `${index + 1}. ${day.day} (${day.date})\n`;
+        availabilityText += `   🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM\n\n`;
       });
+      availabilityText += `👉 Reply with the day number (1-${weeklyData.length}) to select a day.`;
       
-      // Add interactive list with weekly overview
-      const interactive = msg.interactive({
-        type: 'list',
-        body: {
-          text: 'Select a day to see available times:'
-        },
-        action: {
-          button: 'Select Day',
-          sections: [
-            {
-              title: 'This Week\'s Availability',
-              rows: weeklyData.map((day, index) => ({
-                id: `day_${index}`,
-                title: `${day.day} (${day.date})`,
-                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
-              }))
-            }
-          ]
-        }
-      });
-      
-      return res.type('text/xml').send(twiml.toString());
-    }
-
-    // Handle pet issue button responses
-    if (userState.step === 'petIssue') {
-      let petIssue = incomingMsg;
-      
-      // Handle button responses
-      if (incomingMsg === 'pet_issue_yes') {
-        petIssue = 'Yes';
-      } else if (incomingMsg === 'pet_issue_no') {
-        petIssue = 'No';
-      }
-      
-      session.updateSession(from, 'petIssue', petIssue);
-      session.updateSession(from, 'step', 'slot');
-      console.log('🔍 Updated step to slot, new session:', session.getSession(from));
-      
-      // Show weekly availability overview first
-      const weeklyData = scheduler.getWeeklyAvailability();
-      
-      const msg = twiml.message({
-        body: `📅 Great! Thank you.\n\n📅 Here's our availability for this week:`
-      });
-      
-      // Add interactive list with weekly overview
-      const interactive = msg.interactive({
-        type: 'list',
-        body: {
-          text: 'Select a day to see available times:'
-        },
-        action: {
-          button: 'Select Day',
-          sections: [
-            {
-              title: 'This Week\'s Availability',
-              rows: weeklyData.map((day, index) => ({
-                id: `day_${index}`,
-                title: `${day.day} (${day.date})`,
-                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
-              }))
-            }
-          ]
-        }
-      });
-      
+      twiml.message(availabilityText);
       return res.type('text/xml').send(twiml.toString());
     }
 
     // Handle day selection
-    if (userState.step === 'slot' && incomingMsg.startsWith('day_')) {
-      const dayIndex = parseInt(incomingMsg.split('_')[1]);
+    if (userState.step === 'slot' && !isNaN(incomingMsg) && parseInt(incomingMsg) > 0) {
+      const dayIndex = parseInt(incomingMsg) - 1; // Convert 1-based to 0-based
       const weeklyData = scheduler.getWeeklyAvailability();
       const selectedDay = weeklyData[dayIndex];
       
@@ -234,83 +172,40 @@ router.post('/', async (req, res) => {
         session.updateSession(from, 'selectedDay', selectedDay.day);
         session.updateSession(from, 'step', 'timeSelection');
         
-        // Show time slots for the selected day
-        const msg = twiml.message({
-          body: `📅 ${selectedDay.day} (${selectedDay.date})\n\n⏰ Available time slots:`
+        // Show time slots for the selected day in text format
+        let timeSlotsText = `📅 ${selectedDay.day} (${selectedDay.date})\n\n⏰ Available time slots:\n\n`;
+        
+        timeSlotsText += `🌅 Morning (8AM - 12PM):\n`;
+        selectedDay.morning.forEach((time, index) => {
+          timeSlotsText += `   ${index + 1}. ${time}\n`;
         });
         
-        // Add interactive list with time slots
-        const interactive = msg.interactive({
-          type: 'list',
-          body: {
-            text: 'Choose your preferred time:'
-          },
-          action: {
-            button: 'Select Time',
-            sections: [
-              {
-                title: '🌅 Morning (8AM - 12PM)',
-                rows: selectedDay.morning.map((time, index) => ({
-                  id: `time_${selectedDay.day}_${time}`,
-                  title: time,
-                  description: 'Early morning slot'
-                }))
-              },
-              {
-                title: '☀️ Afternoon (12PM - 4PM)',
-                rows: selectedDay.afternoon.map((time, index) => ({
-                  id: `time_${selectedDay.day}_${time}`,
-                  title: time,
-                  description: 'Mid-day slot'
-                }))
-              },
-              {
-                title: '🌆 Evening (4PM - 6PM)',
-                rows: selectedDay.evening.map((time, index) => ({
-                  id: `time_${selectedDay.day}_${time}`,
-                  title: time,
-                  description: 'Late afternoon slot'
-                }))
-              }
-            ]
-          }
+        timeSlotsText += `\n☀️ Afternoon (12PM - 4PM):\n`;
+        selectedDay.afternoon.forEach((time, index) => {
+          timeSlotsText += `   ${index + 1}. ${time}\n`;
         });
         
-        // Add back button
-        const backMsg = twiml.message({
-          body: 'Need to choose a different day?'
+        timeSlotsText += `\n🌆 Evening (4PM - 6PM):\n`;
+        selectedDay.evening.forEach((time, index) => {
+          timeSlotsText += `   ${index + 1}. ${time}\n`;
         });
         
-        const backInteractive = backMsg.interactive({
-          type: 'button',
-          body: {
-            text: 'Select option:'
-          },
-          action: {
-            buttons: [
-              {
-                type: 'reply',
-                reply: {
-                  id: 'back_to_days',
-                  title: '🔄 Choose Different Day'
-                }
-              }
-            ]
-          }
-        });
+        timeSlotsText += `\n👉 Reply with your preferred time (e.g., "9:00 AM" or "2:30 PM")`;
         
+        twiml.message(timeSlotsText);
         return res.type('text/xml').send(twiml.toString());
       }
     }
 
     // Handle time slot selection from day view
-    if (userState.step === 'timeSelection' && incomingMsg.startsWith('time_')) {
-      const parts = incomingMsg.split('_');
-      const dayName = parts[1];
-      const time = parts[2];
-      const selectedSlot = `${dayName} ${time}`;
+    if (userState.step === 'timeSelection') {
+      // Parse the time input (e.g., "9:00 AM", "2:30 PM")
+      const timeInput = incomingMsg.trim();
       
       // Auto-book the selected slot
+      const selectedDay = session.getSession(from).selectedDay;
+      const selectedSlot = `${selectedDay} ${timeInput}`;
+      
       const result = await scheduler.bookSlot(`Book ${selectedSlot}`, from);
       
       if (result.success) {
@@ -387,32 +282,20 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Handle back to days button
-    if (userState.step === 'timeSelection' && incomingMsg === 'back_to_days') {
+    // Handle back to days request
+    if (userState.step === 'timeSelection' && incomingMsg.toLowerCase().includes('back') || incomingMsg.toLowerCase().includes('different')) {
       session.updateSession(from, 'step', 'slot');
       const weeklyData = scheduler.getWeeklyAvailability();
-      const msg = twiml.message({
-        body: `📅 Here's our availability for this week:`
+      
+      // Simple text-based weekly availability
+      let availabilityText = `📅 Here's our availability for this week:\n\n`;
+      weeklyData.forEach((day, index) => {
+        availabilityText += `${index + 1}. ${day.day} (${day.date})\n`;
+        availabilityText += `   🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM\n\n`;
       });
-      const interactive = msg.interactive({
-        type: 'list',
-        body: {
-          text: 'Select a day to see available times:'
-        },
-        action: {
-          button: 'Select Day',
-          sections: [
-            {
-              title: 'This Week\'s Availability',
-              rows: weeklyData.map((day, index) => ({
-                id: `day_${index}`,
-                title: `${day.day} (${day.date})`,
-                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
-              }))
-            }
-          ]
-        }
-      });
+      availabilityText += `👉 Reply with the day number (1-${weeklyData.length}) to select a day.`;
+      
+      twiml.message(availabilityText);
       return res.type('text/xml').send(twiml.toString());
     }
 
@@ -496,155 +379,62 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // 4. Handle menu options (button responses)
-    if (incomingMsg === 'monthly_specials') {
-      const msg = twiml.message({
-        body: `🧼 Our Monthly Specials:\nhttps://www.arlingtonsteamers.com/price-list-and-monthly-specials`
-      });
-      
-      // Add back to menu button
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Need anything else?'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'back_to_menu',
-                title: '🏠 Back to Menu'
-              }
-            }
-          ]
-        }
-      });
-      
+    // 4. Handle menu options (text responses)
+    if (incomingMsg === 'monthly_specials' || incomingMsg === '2') {
+      twiml.message(
+        `🧼 Our Monthly Specials:\n` +
+        `https://www.arlingtonsteamers.com/price-list-and-monthly-specials\n\n` +
+        `👉 Reply with 1 to book an appointment, or say 'hi' to start over.`
+      );
       return res.type('text/xml').send(twiml.toString());
     }
     
-    if (incomingMsg === 'free_quote') {
-      const msg = twiml.message({
-        body: `🖼️ Request Free Quote:\nhttps://www.arlingtonsteamers.com/free-quote`
-      });
-      
-      // Add back to menu button
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Need anything else?'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'back_to_menu',
-                title: '🏠 Back to Menu'
-              }
-            }
-          ]
-        }
-      });
-      
+    if (incomingMsg === 'free_quote' || incomingMsg === '3') {
+      twiml.message(
+        `🖼️ Request Free Quote:\n` +
+        `https://www.arlingtonsteamers.com/free-quote\n\n` +
+        `👉 Reply with 1 to book an appointment, or say 'hi' to start over.`
+      );
       return res.type('text/xml').send(twiml.toString());
     }
     
-    if (incomingMsg === 'customer_reviews') {
-      const msg = twiml.message({
-        body: `⭐ Customer Reviews:\n• "Absolutely amazing job!" – Sarah\n• "Super clean and fast service." – James\n• "Will book again!" – Steve`
-      });
-      
-      // Add back to menu button
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Need anything else?'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'back_to_menu',
-                title: '🏠 Back to Menu'
-              }
-            }
-          ]
-        }
-      });
-      
+    if (incomingMsg === 'customer_reviews' || incomingMsg === '4') {
+      twiml.message(
+        `⭐ Customer Reviews:\n` +
+        `• "Absolutely amazing job!" – Sarah\n` +
+        `• "Super clean and fast service." – James\n` +
+        `• "Will book again!" – Steve\n\n` +
+        `👉 Reply with 1 to book an appointment, or say 'hi' to start over.`
+      );
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // Handle back to menu button
-    if (incomingMsg === 'back_to_menu') {
+    // Handle back to menu request
+    if (incomingMsg === 'back_to_menu' || incomingMsg.toLowerCase().includes('menu')) {
       const details = session.getSession(from);
       
-      // Create interactive message with buttons
-      const msg = twiml.message({
-        body: `👋 Welcome back to Arlington Steamers Carpet Cleaning!\n\nName: ${details.name}\n\nHow can we help you today?`
-      });
-      
-      // Add interactive buttons
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Choose an option below:'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'book_appointment',
-                title: '📅 Book Appointment'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'monthly_specials',
-                title: '💰 Monthly Specials'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'free_quote',
-                title: '📋 Free Quote'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'customer_reviews',
-                title: '⭐ Customer Reviews'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'start_over',
-                title: '🔄 Start Over'
-              }
-            }
-          ]
-        }
-      });
-      
+      // Simple text-based menu
+      twiml.message(
+        `👋 Welcome back to Arlington Steamers Carpet Cleaning!\n\n` +
+        `Name: ${details.name}\n\n` +
+        `How can we help you today?\n` +
+        `1️⃣ Book Appointment\n` +
+        `2️⃣ View Monthly Specials\n` +
+        `3️⃣ Request Free Quote\n` +
+        `4️⃣ Customer Reviews\n\n` +
+        `👉 Reply with a number (1-4).`
+      );
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // Handle start over button
-    if (incomingMsg === 'start_over') {
+    // Handle start over request
+    if (incomingMsg === 'start_over' || incomingMsg.toLowerCase().includes('start over')) {
       // Clear session and start fresh
       session.clearSession(from);
       session.updateSession(from, 'step', 'name');
       
-      const msg = twiml.message("👋 Hello! Welcome to Arlington Steamers Carpet Cleaning.\nWhat is your *name*?");
-      msg.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0rWCzKj3z.png');
+      twiml.message("👋 Hello! Welcome to Arlington Steamers Carpet Cleaning.\nWhat is your *name*?");
+      twiml.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0rWCzKj3z.png');
       return res.type('text/xml').send(twiml.toString());
     }
 
@@ -654,28 +444,12 @@ router.post('/', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
 
-    // 5. Specials, Quote, Reviews
-    if (incomingMsg === '2') {
-      twiml.message(`🧼 Our Monthly Specials:\nhttps://www.arlingtonsteamers.com/price-list-and-monthly-specials`);
-      return res.type('text/xml').send(twiml.toString());
-    }
-
-    if (incomingMsg === '3') {
-      twiml.message(`🖼️ Request Free Quote:\nhttps://www.arlingtonsteamers.com/free-quote`);
-      return res.type('text/xml').send(twiml.toString());
-    }
-
-    if (incomingMsg === '4') {
-      twiml.message(`⭐ Customer Reviews:\n• "Absolutely amazing job!" – Sarah\n• "Super clean and fast service." – James\n• "Will book again!" – Steve`);
-      return res.type('text/xml').send(twiml.toString());
-    }
-
     // 6. Default fallback - show menu again
     console.log('🔍 Fallback condition:', { step: userState.step, stepNotStart: userState.step !== 'start' });
     if (userState.step !== 'start') {
       session.updateSession(from, 'step', 'menu');
       const details = session.getSession(from);
-      const msg = twiml.message(
+      twiml.message(
         `👋 Welcome back to Arlington Steamers!\n\n` +
         `Name: ${details.name}\n\n` +
         `How can we help you today?\n` +
@@ -685,7 +459,7 @@ router.post('/', async (req, res) => {
         `4️⃣ Customer Reviews\n\n` +
         `👉 Reply with a number (1-4).`
       );
-      msg.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0nwyrWCzKj3z.png');
+      twiml.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0nwyrWCzKj3z.png');
       return res.type('text/xml').send(twiml.toString());
     }
 
