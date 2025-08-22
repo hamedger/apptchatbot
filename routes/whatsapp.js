@@ -61,59 +61,18 @@ router.post('/', async (req, res) => {
       
       const details = session.getSession(from);
       
-      // Create interactive message with buttons
-      const msg = twiml.message({
-        body: `👋 Welcome to Arlington Steamers Carpet Cleaning!\n\nName: ${details.name}\n\nHow can we help you today?`
-      });
-      
-      // Add interactive buttons
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Choose an option below:'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'book_appointment',
-                title: '📅 Book Appointment'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'monthly_specials',
-                title: '💰 Monthly Specials'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'free_quote',
-                title: '📋 Free Quote'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'customer_reviews',
-                title: '⭐ Customer Reviews'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'start_over',
-                title: '🔄 Start Over'
-              }
-            }
-          ]
-        }
-      });
-      
-      msg.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0nwyrWCzKj3z.png');
+      // Temporarily use simple text message instead of interactive buttons
+      twiml.message(
+        `👋 Welcome to Arlington Steamers Carpet Cleaning!\n\n` +
+        `Name: ${details.name}\n\n` +
+        `How can we help you today?\n` +
+        `1️⃣ Book Appointment\n` +
+        `2️⃣ View Monthly Specials\n` +
+        `3️⃣ Request Free Quote\n` +
+        `4️⃣ Customer Reviews\n\n` +
+        `👉 Reply with a number (1-4).`
+      );
+      twiml.media('https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=256,fit=crop,q=95/YD06RG7wOPS5XbLz/img_8016-YbNq0nwyrWCzKj3z.png');
       return res.type('text/xml').send(twiml.toString());
     }
 
@@ -128,43 +87,8 @@ router.post('/', async (req, res) => {
       session.updateSession(from, 'phone', incomingMsg);
       session.updateSession(from, 'step', 'address');
       
-      const msg = twiml.message({
-        body: "🏠 Please enter your address (# street, city)\nExample: 1234 Wayne Drive, San Francisco"
-      });
-      
-      // Add quick reply for common addresses
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Or select a common area:'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'address_arlington',
-                title: '🏠 Arlington'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'address_alexandria',
-                title: '🏠 Alexandria'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'address_fairfax',
-                title: '🏠 Fairfax'
-              }
-            }
-          ]
-        }
-      });
-      
+      // Temporarily use simple text message instead of interactive buttons
+      twiml.message("🏠 Please enter your address (# street, city)\nExample: 1234 Wayne Drive, San Francisco");
       return res.type('text/xml').send(twiml.toString());
     }
 
@@ -191,43 +115,8 @@ router.post('/', async (req, res) => {
       session.updateSession(from, 'email', incomingMsg);
       session.updateSession(from, 'step', 'areas');
       
-      const msg = twiml.message({
-        body: "🧼 How many rooms, stairs, or hallways to clean?\nExample: 5 rooms, 2 stairs, 1 hallway"
-      });
-      
-      // Add quick reply for common room configurations
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Or select a common configuration:'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'areas_small',
-                title: '🏠 Small (2-3 rooms)'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'areas_medium',
-                title: '🏠 Medium (4-6 rooms)'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'areas_large',
-                title: '🏠 Large (7+ rooms)'
-              }
-            }
-          ]
-        }
-      });
-      
+      // Temporarily use simple text message instead of interactive buttons
+      twiml.message("🧼 How many rooms, stairs, or hallways to clean?\nExample: 5 rooms, 2 stairs, 1 hallway");
       return res.type('text/xml').send(twiml.toString());
     }
 
@@ -246,37 +135,8 @@ router.post('/', async (req, res) => {
       session.updateSession(from, 'areas', areas);
       session.updateSession(from, 'step', 'petIssue');
       
-      // Create interactive message with Yes/No buttons
-      const msg = twiml.message({
-        body: "🐶 Any *pet urine issue*?"
-      });
-      
-      // Add interactive buttons
-      const interactive = msg.interactive({
-        type: 'button',
-        body: {
-          text: 'Please select:'
-        },
-        action: {
-          buttons: [
-            {
-              type: 'reply',
-              reply: {
-                id: 'pet_issue_yes',
-                title: '🐾 Yes'
-              }
-            },
-            {
-              type: 'reply',
-              reply: {
-                id: 'pet_issue_no',
-                title: '❌ No'
-              }
-            }
-          ]
-        }
-      });
-      
+      // Temporarily use simple text message instead of interactive buttons
+      twiml.message("🐶 Any pet urine issue? (Yes/No)");
       return res.type('text/xml').send(twiml.toString());
     }
 
