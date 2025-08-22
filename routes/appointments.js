@@ -4,6 +4,11 @@ const router = express.Router();
 const moment = require('moment');
 const database = require('../services/database');
 const logger = require('../services/logger');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(authenticateToken);
+router.use(requireAdmin);
 
 // GET /api/appointments - list all appointments
 router.get('/', async (req, res) => {
@@ -31,7 +36,7 @@ router.get('/', async (req, res) => {
       created_at: appt.created_at || new Date().toISOString()
     }));
     
-    logger.info(`Retrieved ${transformedAppointments.length} appointments`);
+    logger.info(`Retrieved ${transformedAppointments.length} appointments for user ${req.user.username}`);
     return res.json(transformedAppointments);
   } catch (err) {
     logger.error('Error reading appointments:', err);
@@ -58,7 +63,7 @@ router.get('/stats', async (req, res) => {
       confirmed: confirmedResult?.count || 0
     };
     
-    logger.info('Retrieved appointment statistics:', stats);
+    logger.info(`Retrieved appointment statistics for user ${req.user.username}:`, stats);
     return res.json(stats);
   } catch (err) {
     logger.error('Error reading appointment stats:', err);
@@ -122,7 +127,7 @@ router.post('/', async (req, res) => {
       created_at: new Date().toISOString()
     };
     
-    logger.info('Created new appointment:', newAppointment);
+    logger.info(`Created new appointment for user ${req.user.username}:`, newAppointment);
     return res.status(201).json(newAppointment);
   } catch (err) {
     logger.error('Error creating appointment:', err);
@@ -164,7 +169,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Appointment not found' });
     }
     
-    logger.info(`Updated appointment ${id}`);
+    logger.info(`Updated appointment ${id} for user ${req.user.username}`);
     return res.json({ message: 'Appointment updated successfully' });
   } catch (err) {
     logger.error('Error updating appointment:', err);
@@ -183,7 +188,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Appointment not found' });
     }
     
-    logger.info(`Deleted appointment ${id}`);
+    logger.info(`Deleted appointment ${id} for user ${req.user.username}`);
     return res.json({ message: 'Appointment deleted successfully' });
   } catch (err) {
     logger.error('Error deleting appointment:', err);
