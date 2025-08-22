@@ -18,7 +18,7 @@ const authService = require('./services/authService');
 // Routes
 const authRoutes = require('./routes/auth');
 const appointmentRoutes = require('./routes/appointments');
-const whatsappRoutes = require('./routes/whatsapp-simple'); // Use the new simplified route
+const whatsappRoutes = require('./routes/whatsapp-test'); // Use test route temporarily
 
 const app = express();
 
