@@ -15,10 +15,10 @@ const logger = require('./services/logger');
 const database = require('./services/database');
 const authService = require('./services/authService');
 
-// Import routes
-const whatsappRouter = require('./routes/whatsapp');
-const appointmentsRouter = require('./routes/appointments');
-const authRouter = require('./routes/auth');
+// Routes
+const authRoutes = require('./routes/auth');
+const appointmentRoutes = require('./routes/appointments');
+const whatsappRoutes = require('./routes/whatsapp-simple'); // Use the new simplified route
 
 const app = express();
 
@@ -118,9 +118,9 @@ app.get('/healthz', (req, res) => {
 });
 
 // API routes
-app.use('/whatsapp', whatsappRouter);
-app.use('/api/appointments', appointmentsRouter);
-app.use('/api/auth', authRouter);
+app.use('/whatsapp', whatsappRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/auth', authRoutes);
 
 // Serve static files from public directory (after API routes)
 app.use(express.static('public', {
