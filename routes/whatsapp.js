@@ -286,28 +286,28 @@ router.post('/', async (req, res) => {
       session.updateSession(from, 'step', 'slot');
       console.log('🔍 Updated step to slot, new session:', session.getSession(from));
       
-      const slots = scheduler.getAvailableSlots();
+      // Show weekly availability overview first
+      const weeklyData = scheduler.getWeeklyAvailability();
       
-      // Create interactive message with time slot buttons
       const msg = twiml.message({
-        body: `📅 Great! Thank you.\n\n📅 Please select your preferred time slot:`
+        body: `📅 Great! Thank you.\n\n📅 Here's our availability for this week:`
       });
       
-      // Add interactive list with available slots
+      // Add interactive list with weekly overview
       const interactive = msg.interactive({
         type: 'list',
         body: {
-          text: 'Available time slots:'
+          text: 'Select a day to see available times:'
         },
         action: {
-          button: 'Select Time Slot',
+          button: 'Select Day',
           sections: [
             {
-              title: 'Available Slots',
-              rows: slots.slice(0, 6).map((slot, index) => ({
-                id: `slot_${index}`,
-                title: slot,
-                description: 'Click to select this time'
+              title: 'This Week\'s Availability',
+              rows: weeklyData.map((day, index) => ({
+                id: `day_${index}`,
+                title: `${day.day} (${day.date})`,
+                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
               }))
             }
           ]
@@ -332,28 +332,28 @@ router.post('/', async (req, res) => {
       session.updateSession(from, 'step', 'slot');
       console.log('🔍 Updated step to slot, new session:', session.getSession(from));
       
-      const slots = scheduler.getAvailableSlots();
+      // Show weekly availability overview first
+      const weeklyData = scheduler.getWeeklyAvailability();
       
-      // Create interactive message with time slot buttons
       const msg = twiml.message({
-        body: `📅 Great! Thank you.\n\n📅 Please select your preferred time slot:`
+        body: `📅 Great! Thank you.\n\n📅 Here's our availability for this week:`
       });
       
-      // Add interactive list with available slots
+      // Add interactive list with weekly overview
       const interactive = msg.interactive({
         type: 'list',
         body: {
-          text: 'Available time slots:'
+          text: 'Select a day to see available times:'
         },
         action: {
-          button: 'Select Time Slot',
+          button: 'Select Day',
           sections: [
             {
-              title: 'Available Slots',
-              rows: slots.slice(0, 6).map((slot, index) => ({
-                id: `slot_${index}`,
-                title: slot,
-                description: 'Click to select this time'
+              title: 'This Week\'s Availability',
+              rows: weeklyData.map((day, index) => ({
+                id: `day_${index}`,
+                title: `${day.day} (${day.date})`,
+                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
               }))
             }
           ]
@@ -363,89 +363,197 @@ router.post('/', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
 
-    // Handle time slot button responses
-    if (userState.step === 'slot' && incomingMsg.startsWith('slot_')) {
-      const slotIndex = parseInt(incomingMsg.split('_')[1]);
-      const slots = scheduler.getAvailableSlots();
-      const selectedSlot = slots[slotIndex];
+    // Handle day selection
+    if (userState.step === 'slot' && incomingMsg.startsWith('day_')) {
+      const dayIndex = parseInt(incomingMsg.split('_')[1]);
+      const weeklyData = scheduler.getWeeklyAvailability();
+      const selectedDay = weeklyData[dayIndex];
       
-      if (selectedSlot) {
-        // Auto-book the selected slot
-        const result = await scheduler.bookSlot(`Book ${selectedSlot}`, from);
+      if (selectedDay) {
+        // Store selected day in session
+        session.updateSession(from, 'selectedDay', selectedDay.day);
+        session.updateSession(from, 'step', 'timeSelection');
         
-        if (result.success) {
-          const details = session.getSession(from);
-          
-          // Add slot and worker to session for admin notification
-          session.updateSession(from, 'slot', result.slot);
-          session.updateSession(from, 'worker', result.worker);
-          
-          // Save appointment to database
-          try {
-            const database = require('../services/database');
-            const appointmentId = `appt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            await database.run(`
-              INSERT INTO appointments (
-                id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            `, [
-              appointmentId,
-              from,
-              result.slot,
-              result.worker,
-              details.name,
-              details.phone,
-              details.email,
-              details.address,
-              details.areas,
-              details.petIssue,
-              'confirmed'
-            ]);
-            
-            console.log('✅ Appointment saved to database:', appointmentId);
-            
-            // Notify admin
-            try {
-              await notifyAdmin({
-                ...details,
-                slot: result.slot,
-                worker: result.worker
-              });
-              console.log('✅ Admin notification sent');
-            } catch (error) {
-              console.error('❌ Failed to notify admin:', error);
-            }
-            
-            // Clear session
-            session.clearSession(from);
-            
-            const msg = twiml.message(
-              `🎉 *Appointment Confirmed!*\n\n` +
-              `📅 Date & Time: ${result.slot}\n` +
-              `👷 Worker: ${result.worker}\n` +
-              `👤 Name: ${details.name}\n` +
-              `📞 Phone: ${details.phone}\n` +
-              `🏠 Address: ${details.address}\n` +
-              `📧 Email: ${details.email}\n` +
-              `🧼 Areas: ${details.areas}\n` +
-              `🐶 Pet Issue: ${details.petIssue}\n\n` +
-              `✅ Your appointment has been booked successfully!\n\n` +
-              `We'll send you a confirmation shortly. Thank you for choosing Arlington Steamers! 🧼✨`
-            );
-            
-            return res.type('text/xml').send(twiml.toString());
-            
-          } catch (error) {
-            console.error('Error saving appointment to database:', error);
-            twiml.message("❌ Sorry, there was an error booking your appointment. Please try again or contact support.");
-            return res.type('text/xml').send(twiml.toString());
+        // Show time slots for the selected day
+        const msg = twiml.message({
+          body: `📅 ${selectedDay.day} (${selectedDay.date})\n\n⏰ Available time slots:`
+        });
+        
+        // Add interactive list with time slots
+        const interactive = msg.interactive({
+          type: 'list',
+          body: {
+            text: 'Choose your preferred time:'
+          },
+          action: {
+            button: 'Select Time',
+            sections: [
+              {
+                title: '🌅 Morning (8AM - 12PM)',
+                rows: selectedDay.morning.map((time, index) => ({
+                  id: `time_${selectedDay.day}_${time}`,
+                  title: time,
+                  description: 'Early morning slot'
+                }))
+              },
+              {
+                title: '☀️ Afternoon (12PM - 4PM)',
+                rows: selectedDay.afternoon.map((time, index) => ({
+                  id: `time_${selectedDay.day}_${time}`,
+                  title: time,
+                  description: 'Mid-day slot'
+                }))
+              },
+              {
+                title: '🌆 Evening (4PM - 6PM)',
+                rows: selectedDay.evening.map((time, index) => ({
+                  id: `time_${selectedDay.day}_${time}`,
+                  title: time,
+                  description: 'Late afternoon slot'
+                }))
+              }
+            ]
           }
-        } else {
-          twiml.message(`❌ Sorry, that slot is no longer available. Please try another time.`);
+        });
+        
+        // Add back button
+        const backMsg = twiml.message({
+          body: 'Need to choose a different day?'
+        });
+        
+        const backInteractive = backMsg.interactive({
+          type: 'button',
+          body: {
+            text: 'Select option:'
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: 'back_to_days',
+                  title: '🔄 Choose Different Day'
+                }
+              }
+            ]
+          }
+        });
+        
+        return res.type('text/xml').send(twiml.toString());
+      }
+    }
+
+    // Handle time slot selection from day view
+    if (userState.step === 'timeSelection' && incomingMsg.startsWith('time_')) {
+      const parts = incomingMsg.split('_');
+      const dayName = parts[1];
+      const time = parts[2];
+      const selectedSlot = `${dayName} ${time}`;
+      
+      // Auto-book the selected slot
+      const result = await scheduler.bookSlot(`Book ${selectedSlot}`, from);
+      
+      if (result.success) {
+        const details = session.getSession(from);
+        
+        // Add slot and worker to session for admin notification
+        session.updateSession(from, 'slot', result.slot);
+        session.updateSession(from, 'worker', result.worker);
+        
+        // Save appointment to database
+        try {
+          const database = require('../services/database');
+          const appointmentId = `appt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          await database.run(`
+            INSERT INTO appointments (
+              id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `, [
+            appointmentId,
+            from,
+            result.slot,
+            result.worker,
+            details.name,
+            details.phone,
+            details.email,
+            details.address,
+            details.areas,
+            details.petIssue,
+            'confirmed'
+          ]);
+          
+          console.log('✅ Appointment saved to database:', appointmentId);
+          
+          // Notify admin
+          try {
+            await notifyAdmin({
+              ...details,
+              slot: result.slot,
+              worker: result.worker
+            });
+            console.log('✅ Admin notification sent');
+          } catch (error) {
+            console.error('❌ Failed to notify admin:', error);
+          }
+          
+          // Clear session
+          session.clearSession(from);
+          
+          const msg = twiml.message(
+            `🎉 *Appointment Confirmed!*\n\n` +
+            `📅 Date & Time: ${result.slot}\n` +
+            `👷 Worker: ${result.worker}\n` +
+            `👤 Name: ${details.name}\n` +
+            `📞 Phone: ${details.phone}\n` +
+            `🏠 Address: ${details.address}\n` +
+            `📧 Email: ${details.email}\n` +
+            `🧼 Areas: ${details.areas}\n` +
+            `🐶 Pet Issue: ${details.petIssue}\n\n` +
+            `✅ Your appointment has been booked successfully!\n\n` +
+            `We'll send you a confirmation shortly. Thank you for choosing Arlington Steamers! 🧼✨`
+          );
+          
+          return res.type('text/xml').send(twiml.toString());
+          
+        } catch (error) {
+          console.error('Error saving appointment to database:', error);
+          twiml.message("❌ Sorry, there was an error booking your appointment. Please try again or contact support.");
           return res.type('text/xml').send(twiml.toString());
         }
+      } else {
+        twiml.message(`❌ Sorry, that slot is no longer available. Please try another time.`);
+        return res.type('text/xml').send(twiml.toString());
       }
+    }
+
+    // Handle back to days button
+    if (userState.step === 'timeSelection' && incomingMsg === 'back_to_days') {
+      session.updateSession(from, 'step', 'slot');
+      const weeklyData = scheduler.getWeeklyAvailability();
+      const msg = twiml.message({
+        body: `📅 Here's our availability for this week:`
+      });
+      const interactive = msg.interactive({
+        type: 'list',
+        body: {
+          text: 'Select a day to see available times:'
+        },
+        action: {
+          button: 'Select Day',
+          sections: [
+            {
+              title: 'This Week\'s Availability',
+              rows: weeklyData.map((day, index) => ({
+                id: `day_${index}`,
+                title: `${day.day} (${day.date})`,
+                description: `🌅 Morning: 8AM-12PM | ☀️ Afternoon: 12PM-4PM | 🌆 Evening: 4PM-6PM`
+              }))
+            }
+          ]
+        }
+      });
+      return res.type('text/xml').send(twiml.toString());
     }
 
     // 3. Handle final booking (legacy text input)

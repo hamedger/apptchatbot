@@ -27,6 +27,82 @@ function getAvailableSlots() {
   return slots;
 }
 
+// New: Get weekly availability overview
+function getWeeklyAvailability() {
+  const startDate = moment().startOf('day');
+  const weeklyData = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const currentDate = startDate.clone().add(i, 'days');
+    const dayName = currentDate.format('dddd');
+    const dateFormatted = currentDate.format('MMM D');
+    
+    // Skip weekends for now
+    if (dayName === 'Saturday' || dayName === 'Sunday') continue;
+    
+    const daySlots = {
+      day: dayName,
+      date: dateFormatted,
+      morning: ['8:00AM', '9:00AM', '10:00AM', '11:00AM'],
+      afternoon: ['12:00PM', '1:00PM', '2:00PM', '3:00PM'],
+      evening: ['4:00PM', '5:00PM', '6:00PM']
+    };
+    
+    weeklyData.push(daySlots);
+  }
+  
+  return weeklyData;
+}
+
+// New: Get time slots for a specific day
+function getDaySlots(dayName) {
+  const slots = [];
+  const times = ['8:00AM', '9:00AM', '10:00AM', '11:00AM', '12:00PM', '1:00PM', '2:00PM', '3:00PM', '4:00PM', '5:00PM', '6:00PM'];
+  
+  times.forEach(time => {
+    slots.push(`${dayName} ${time}`);
+  });
+  
+  return slots;
+}
+
+// New: Get smart time ranges
+function getSmartTimeRanges() {
+  return [
+    {
+      title: '🌅 Morning (8AM - 12PM)',
+      description: 'Early bird slots',
+      times: ['8:00AM', '9:00AM', '10:00AM', '11:00AM']
+    },
+    {
+      title: '☀️ Afternoon (12PM - 4PM)',
+      description: 'Mid-day availability',
+      times: ['12:00PM', '1:00PM', '2:00PM', '3:00PM']
+    },
+    {
+      title: '🌆 Evening (4PM - 6PM)',
+      description: 'Late afternoon slots',
+      times: ['4:00PM', '5:00PM', '6:00PM']
+    }
+  ];
+}
+
+// New: Get popular time slots (most requested)
+function getPopularTimeSlots() {
+  return [
+    'Monday 9:00AM',
+    'Monday 2:00PM',
+    'Tuesday 10:00AM',
+    'Tuesday 3:00PM',
+    'Wednesday 9:00AM',
+    'Wednesday 2:00PM',
+    'Thursday 10:00AM',
+    'Thursday 3:00PM',
+    'Friday 9:00AM',
+    'Friday 2:00PM'
+  ];
+}
+
 async function bookSlot(message, user) {
   try {
     // Parse the booking message
@@ -109,6 +185,10 @@ async function bookSlot(message, user) {
 
 module.exports = {
   getAvailableSlots,
+  getWeeklyAvailability,
+  getDaySlots,
+  getSmartTimeRanges,
+  getPopularTimeSlots,
   bookSlot
 };
 
