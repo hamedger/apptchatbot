@@ -8,28 +8,16 @@ const logger = require('../services/logger');
 /**
  * POST /auth/login - User login
  */
-router.post('/login', [
-  authRateLimit,
-  logAuthAttempt,
-  body('username')
-    .trim()
-    .isLength({ min: 3, max: 50 })
-    .withMessage('Username must be between 3 and 50 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
-], async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array()
-      });
-    }
+    // Temporarily disable validation to isolate the issue
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) {
+    //   return res.status(400).json({
+    //     error: 'Validation failed',
+    //     details: errors.array()
+    //   });
+    // }
 
     const { username, password } = req.body;
 

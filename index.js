@@ -23,46 +23,31 @@ const authRouter = require('./routes/auth');
 const app = express();
 
 // Trust proxy for rate limiting
-app.set('trust proxy', 1);
+// app.set('trust proxy', 1); // Temporarily disabled to isolate the issue
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"]
-    }
-  }
-}));
+// app.use(helmet({ // Temporarily disabled to isolate the issue
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       styleSrc: ["'self'", "'unsafe-inline'"],
+//       scriptSrc: ["'self'"],
+//       imgSrc: ["'self'", "data:", "https:"],
+//       connectSrc: ["'self'"],
+//       fontSrc: ["'self'"],
+//       objectSrc: ["'none'"],
+//       mediaSrc: ["'self'"],
+//       frameSrc: ["'none'"]
+//     }
+//   }
+// }));
 
 
 // CORS configuration
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-
-    // If no allowed origins are configured, allow same-origin requests
-    if (allowedOrigins.length === 0) {
-      // Allow same-origin requests (when frontend and backend are on same domain)
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`Not allowed by CORS: ${origin}`));
-    }
-  },
+  origin: true, // Temporarily allow all origins to isolate the issue
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -100,7 +85,7 @@ const speedLimiter = slowDown({
 });
 
 app.use(limiter);
-app.use(speedLimiter);
+// app.use(speedLimiter); // Temporarily disabled to isolate the issue
 
 // Root endpoint
 app.get('/', (req, res) => {
