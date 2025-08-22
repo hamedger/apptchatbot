@@ -40,7 +40,7 @@ async function saveSessions() {
  * @param {string} user - WhatsApp user ID or phone number
  * @returns {object} - session object { step, name?, phone?, etc. }
  */
-function getSession(user) {
+async function getSession(user) {
   // Normalize the user key to handle different formats consistently
   // Remove whatsapp: prefix and normalize phone number
   let normalizedUser = user;
@@ -57,7 +57,7 @@ function getSession(user) {
       lastActivity: new Date().toISOString()
     };
     // Save new session
-    saveSessions();
+    await saveSessions();
   }
   return userSessions[normalizedUser];
 }
@@ -68,13 +68,13 @@ function getSession(user) {
  * @param {string} key - The key to update (e.g. 'name', 'step')
  * @param {string} value - Value to store
  */
-function updateSession(user, key, value) {
-  const session = getSession(user);
+async function updateSession(user, key, value) {
+  const session = await getSession(user);
   if (key && value !== undefined) {
     session[key] = value;
     session.lastActivity = new Date().toISOString();
     // Save updated session
-    saveSessions();
+    await saveSessions();
   }
 }
 
@@ -82,7 +82,7 @@ function updateSession(user, key, value) {
  * Clears the user's session.
  * @param {string} user - WhatsApp user ID or phone number
  */
-function clearSession(user) {
+async function clearSession(user) {
   // Normalize the user key to handle different formats consistently
   // Remove whatsapp: prefix and normalize phone number
   let normalizedUser = user;
@@ -94,7 +94,7 @@ function clearSession(user) {
   
   delete userSessions[normalizedUser];
   // Save updated sessions
-  saveSessions();
+  await saveSessions();
 }
 
 /**
