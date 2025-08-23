@@ -105,6 +105,12 @@ class Database {
 
   async migrateSchema() {
     try {
+      // Ensure database is initialized
+      if (!this.initialized) {
+        logger.info('Database not yet initialized, skipping migration');
+        return;
+      }
+      
       // First check if appointments table exists
       const tableExists = await this.query("SELECT name FROM sqlite_master WHERE type='table' AND name='appointments'");
       if (tableExists.length === 0) {
