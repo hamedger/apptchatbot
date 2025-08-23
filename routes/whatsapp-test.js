@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
     
     // Get or create user session
     let userState = await session.getSession(from) || { step: 'start' };
-    console.log('🔄 User step:', userState.step);
+    console.log('🔄 User step:', userState.step, 'Message:', incomingMsg);
     
     // 1. Start conversation - FAST & CLEAR
     if (incomingMsg.toLowerCase().includes('hi') || incomingMsg.toLowerCase().includes('hello')) {
@@ -43,8 +43,10 @@ router.post('/', async (req, res) => {
     
     // 3. Handle phone - FAST & CLEAR
     if (userState.step === 'phone') {
+      console.log('📱 Processing phone number:', incomingMsg);
       await session.updateSession(from, 'phone', incomingMsg);
       await session.updateSession(from, 'step', 'address');
+      console.log('📱 Phone saved, moving to address step');
       twiml.message("🏠 What's your address? (Street, City, State)");
       return res.type('text/xml').send(twiml.toString());
     }
@@ -94,50 +96,71 @@ router.post('/', async (req, res) => {
       await session.updateSession(from, 'petIssue', incomingMsg);
       await session.updateSession(from, 'step', 'timeSlots');
       
-      // Show weekly availability with time slots
-      const weeklyData = scheduler.getWeeklyAvailability();
-      
-      let timeSlotsText = `📅 Great! Here's our availability this week:\n\n`;
-      weeklyData.forEach((day, index) => {
-        timeSlotsText += `${index + 1}. ${day.day} (${day.date})\n`;
-        timeSlotsText += `   🌅 8AM-12PM | ☀️ 12PM-4PM | 🌆 4PM-6PM\n\n`;
-      });
-      timeSlotsText += `👉 Reply with day number (1-${weeklyData.length}) to see time slots.`;
-      
-      twiml.message(timeSlotsText);
-      return res.type('text/xml').send(twiml.toString());
+      try {
+        // Show weekly availability with time slots
+        const weeklyData = scheduler.getWeeklyAvailability();
+        console.log('📅 Weekly data retrieved:', weeklyData.length, 'days');
+        
+        let timeSlotsText = `📅 Great! Here's our availability this week:\n\n`;
+        weeklyData.forEach((day, index) => {
+          timeSlotsText += `${index + 1}. ${day.day} (${day.date})\n`;
+          timeSlotsText += `   🌅 8AM-12PM | ☀️ 12PM-4PM | 🌆 4PM-6PM\n\n`;
+        });
+        timeSlotsText += `👉 Reply with day number (1-${weeklyData.length}) to see time slots.`;
+        
+        twiml.message(timeSlotsText);
+        return res.type('text/xml').send(twiml.toString());
+      } catch (error) {
+        console.error('❌ Error getting weekly availability:', error);
+        // Fallback to simple message
+        twiml.message("📅 Great! Now let's schedule your appointment.\n\nPlease reply with your preferred day (Monday, Tuesday, Wednesday, Thursday, or Friday).");
+        return res.type('text/xml').send(twiml.toString());
+      }
     }
     
     // 10. Handle day selection - SMART & CLEAR
     if (userState.step === 'timeSlots' && !isNaN(incomingMsg) && parseInt(incomingMsg) > 0) {
-      const dayIndex = parseInt(incomingMsg) - 1;
-      const weeklyData = scheduler.getWeeklyAvailability();
-      const selectedDay = weeklyData[dayIndex];
-      
-      if (selectedDay) {
-        await session.updateSession(from, 'selectedDay', selectedDay.day);
-        await session.updateSession(from, 'step', 'timeSelection');
+      try {
+        const dayIndex = parseInt(incomingMsg) - 1;
+        const weeklyData = scheduler.getWeeklyAvailability();
+        console.log('📅 Day selection - index:', dayIndex, 'weekly data length:', weeklyData.length);
         
-        let timeSlotsText = `⏰ ${selectedDay.day} (${selectedDay.date}) - Available times:\n\n`;
+        const selectedDay = weeklyData[dayIndex];
         
-        timeSlotsText += `🌅 Morning (8AM-12PM):\n`;
-        selectedDay.morning.forEach((time, index) => {
-          timeSlotsText += `   ${index + 1}. ${time}\n`;
-        });
-        
-        timeSlotsText += `\n☀️ Afternoon (12PM-4PM):\n`;
-        selectedDay.afternoon.forEach((time, index) => {
-          timeSlotsText += `   ${index + 1}. ${time}\n`;
-        });
-        
-        timeSlotsText += `\n🌆 Evening (4PM-6PM):\n`;
-        selectedDay.evening.forEach((time, index) => {
-          timeSlotsText += `   ${index + 1}. ${time}\n`;
-        });
-        
-        timeSlotsText += `\n👉 Reply with your preferred time (e.g., "9:00 AM", "2:30 PM", or "1pm")`;
-        
-        twiml.message(timeSlotsText);
+        if (selectedDay) {
+          await session.updateSession(from, 'selectedDay', selectedDay.day);
+          await session.updateSession(from, 'step', 'timeSelection');
+          console.log('📅 Day selected:', selectedDay.day);
+          
+          let timeSlotsText = `⏰ ${selectedDay.day} (${selectedDay.date}) - Available times:\n\n`;
+          
+          timeSlotsText += `🌅 Morning (8AM-12PM):\n`;
+          selectedDay.morning.forEach((time, index) => {
+            timeSlotsText += `   ${index + 1}. ${time}\n`;
+          });
+          
+          timeSlotsText += `\n☀️ Afternoon (12PM-4PM):\n`;
+          selectedDay.afternoon.forEach((time, index) => {
+            timeSlotsText += `   ${index + 1}. ${time}\n`;
+          });
+          
+          timeSlotsText += `\n🌆 Evening (4PM-6PM):\n`;
+          selectedDay.evening.forEach((time, index) => {
+            timeSlotsText += `   ${index + 1}. ${time}\n`;
+          });
+          
+          timeSlotsText += `\n👉 Reply with your preferred time (e.g., "9:00 AM", "2:30 PM", or "1pm")`;
+          
+          twiml.message(timeSlotsText);
+          return res.type('text/xml').send(twiml.toString());
+        } else {
+          console.log('❌ Invalid day index:', dayIndex);
+          twiml.message("❌ Invalid day selection. Please choose a number from the list above.");
+          return res.type('text/xml').send(twiml.toString());
+        }
+      } catch (error) {
+        console.error('❌ Error in day selection:', error);
+        twiml.message("❌ Sorry, there was an error. Please try again or say 'RESTART' to start over.");
         return res.type('text/xml').send(twiml.toString());
       }
     }
