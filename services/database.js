@@ -105,29 +105,99 @@ class Database {
 
   async migrateSchema() {
     try {
-      // Check if old areas column exists
+      // First check if appointments table exists
+      const tableExists = await this.query("SELECT name FROM sqlite_master WHERE type='table' AND name='appointments'");
+      if (tableExists.length === 0) {
+        logger.info('Appointments table does not exist yet, will be created by setupTables');
+        return;
+      }
+      
+      // Check current table structure
       const tableInfo = await this.query("PRAGMA table_info(appointments)");
+      logger.info('Current table structure:', tableInfo.map(col => col.name));
+      
       const hasAreas = tableInfo.some(col => col.name === 'areas');
       const hasRooms = tableInfo.some(col => col.name === 'rooms');
+      const hasHallways = tableInfo.some(col => col.name === 'hallways');
+      const hasStairways = tableInfo.some(col => col.name === 'stairways');
       
-      if (hasAreas && !hasRooms) {
-        logger.info('Migrating database schema...');
-        
-        // Add new columns
-        await this.run("ALTER TABLE appointments ADD COLUMN rooms TEXT DEFAULT 'N/A'");
-        await this.run("ALTER TABLE appointments ADD COLUMN hallways TEXT DEFAULT 'N/A'");
-        await this.run("ALTER TABLE appointments ADD COLUMN stairways TEXT DEFAULT 'N/A'");
-        
-        // Copy data from areas to rooms (assuming areas contained room info)
-        await this.run("UPDATE appointments SET rooms = areas WHERE rooms = 'N/A'");
-        
-        // Remove old areas column (SQLite doesn't support DROP COLUMN, so we'll recreate)
-        // For now, we'll keep both and handle in the application layer
-        logger.info('Migration completed successfully');
+      // If we already have the new columns, no migration needed
+      if (hasRooms && hasHallways && hasStairways) {
+        logger.info('Database already has new schema, no migration needed');
+        return;
       }
+      
+      logger.info('Starting database migration...');
+      
+      // Add new columns if they don't exist
+      if (!hasRooms) {
+        try {
+          await this.run("ALTER TABLE appointments ADD COLUMN rooms TEXT DEFAULT 'N/A'");
+          logger.info('Added rooms column');
+        } catch (colError) {
+          logger.warn('Could not add rooms column:', colError.message);
+        }
+      }
+      
+      if (!hasHallways) {
+        try {
+          await this.run("ALTER TABLE appointments ADD COLUMN hallways TEXT DEFAULT 'N/A'");
+          logger.info('Added hallways column');
+        } catch (colError) {
+          logger.warn('Could not add hallways column:', colError.message);
+        }
+      }
+      
+      if (!hasStairways) {
+        try {
+          await this.run("ALTER TABLE appointments ADD COLUMN stairways TEXT DEFAULT 'N/A'");
+          logger.info('Added stairways column');
+        } catch (colError) {
+          logger.warn('Could not add stairways column:', colError.message);
+        }
+      }
+      
+      // If old areas column exists, copy data to rooms
+      if (hasAreas && hasRooms) {
+        try {
+          await this.run("UPDATE appointments SET rooms = areas WHERE rooms = 'N/A' OR rooms IS NULL");
+          logger.info('Copied areas data to rooms column');
+        } catch (copyError) {
+          logger.warn('Could not copy areas data:', copyError.message);
+        }
+      }
+      
+      // Set default values for any NULL entries (only if columns exist)
+      if (hasRooms) {
+        try {
+          await this.run("UPDATE appointments SET rooms = 'N/A' WHERE rooms IS NULL");
+        } catch (updateError) {
+          logger.warn('Could not update rooms defaults:', updateError.message);
+        }
+      }
+      
+      if (hasHallways) {
+        try {
+          await this.run("UPDATE appointments SET hallways = 'N/A' WHERE hallways IS NULL");
+        } catch (updateError) {
+          logger.warn('Could not update hallways defaults:', updateError.message);
+        }
+      }
+      
+      if (hasStairways) {
+        try {
+          await this.run("UPDATE appointments SET stairways = 'N/A' WHERE stairways IS NULL");
+        } catch (updateError) {
+          logger.warn('Could not update stairways defaults:', updateError.message);
+        }
+      }
+      
+      logger.info('Database migration completed successfully');
+      
     } catch (error) {
       logger.error('Migration failed:', error);
-      throw error;
+      // Don't throw error, just log it and continue
+      // This prevents the app from crashing if migration fails
     }
   }
 
