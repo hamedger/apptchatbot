@@ -135,7 +135,7 @@ router.post('/', async (req, res) => {
           timeSlotsText += `   ${index + 1}. ${time}\n`;
         });
         
-        timeSlotsText += `\n👉 Reply with your preferred time (e.g., "9:00 AM" or "2:30 PM")`;
+        timeSlotsText += `\n👉 Reply with your preferred time (e.g., "9:00 AM", "2:30 PM", or "1pm")`;
         
         twiml.message(timeSlotsText);
         return res.type('text/xml').send(twiml.toString());
@@ -146,10 +146,41 @@ router.post('/', async (req, res) => {
     if (userState.step === 'timeSelection') {
       const timeInput = incomingMsg.trim();
       const selectedDay = (await session.getSession(from)).selectedDay;
-      const selectedSlot = `${selectedDay} ${timeInput}`;
+      
+      // Convert time input to the format scheduler expects (e.g., "9:00 AM" -> "9am")
+      let formattedTime = timeInput;
+      
+      // Handle various time formats and convert to simple format
+      if (timeInput.match(/^\d{1,2}:\d{2}\s*(am|pm)$/i)) {
+        // Format: "9:00 AM" -> "9am"
+        const timeMatch = timeInput.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[1]);
+          const minute = parseInt(timeMatch[2]);
+          const period = timeMatch[3].toLowerCase();
+          
+          if (minute === 0) {
+            formattedTime = `${hour}${period}`; // "9am"
+          } else {
+            formattedTime = `${hour}:${minute.toString().padStart(2, '0')}${period}`; // "9:30am"
+          }
+        }
+      } else if (timeInput.match(/^\d{1,2}\s*(am|pm)$/i)) {
+        // Format: "9 AM" -> "9am"
+        const timeMatch = timeInput.match(/^(\d{1,2})\s*(am|pm)$/i);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[1]);
+          const period = timeMatch[2].toLowerCase();
+          formattedTime = `${hour}${period}`; // "9am"
+        }
+      }
+      
+      // Create the booking message in the format scheduler expects
+      const bookingMessage = `Book ${formattedTime} ${selectedDay}`;
+      console.log('Booking message:', bookingMessage);
       
       // Try to book the selected slot
-      const result = await scheduler.bookSlot(`Book ${selectedSlot}`, from);
+      const result = await scheduler.bookSlot(bookingMessage, from);
       
       if (result.success) {
         const details = await session.getSession(from);
