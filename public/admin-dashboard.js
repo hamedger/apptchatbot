@@ -109,7 +109,9 @@ function displayAppointments(appointments) {
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Address</th>
-                    <th>Areas</th>
+                    <th>Rooms</th>
+                    <th>Hallways</th>
+                    <th>Stairways</th>
                     <th>Pet Issue</th>
                     <th>Date & Time</th>
                     <th>Worker</th>
@@ -124,7 +126,9 @@ function displayAppointments(appointments) {
                         <td>${escapeHtml(app.phone || app.phone_number || 'N/A')}</td>
                         <td>${escapeHtml(app.email || 'N/A')}</td>
                         <td>${escapeHtml(app.address || 'N/A')}</td>
-                        <td>${escapeHtml(app.areas || 'N/A')}</td>
+                        <td>${escapeHtml(app.rooms || 'N/A')}</td>
+                        <td>${escapeHtml(app.hallways || 'N/A')}</td>
+                        <td>${escapeHtml(app.stairways || 'N/A')}</td>
                         <td>${escapeHtml(app.pet_issue || app.petIssue || 'N/A')}</td>
                         <td>${formatDateTime(app.appointment_date || app.slot)}</td>
                         <td>${escapeHtml(app.worker || 'Unassigned')}</td>
@@ -267,7 +271,9 @@ window.editAppointment = function(id) {
     document.getElementById('editDate').value = date.toISOString().split('T')[0];
     document.getElementById('editTime').value = time;
     document.getElementById('editAddress').value = appointment.address || '';
-    document.getElementById('editAreas').value = appointment.areas || '';
+    document.getElementById('editRooms').value = appointment.rooms || '';
+    document.getElementById('editHallways').value = appointment.hallways || '';
+    document.getElementById('editStairways').value = appointment.stairways || '';
     document.getElementById('editPetIssue').value = appointment.pet_issue || appointment.petIssue || 'No';
     document.getElementById('editStatus').value = appointment.status || 'Pending';
     
@@ -312,7 +318,9 @@ async function handleEditSubmit(event) {
             worker: document.getElementById('editWorker').value,
             slot: `${document.getElementById('editDate').value} ${document.getElementById('editTime').value}`,
             address: document.getElementById('editAddress').value,
-            areas: document.getElementById('editAreas').value,
+            rooms: document.getElementById('editRooms').value,
+            hallways: document.getElementById('editHallways').value,
+            stairways: document.getElementById('editStairways').value,
             petIssue: document.getElementById('editPetIssue').value,
             status: document.getElementById('editStatus').value
         };

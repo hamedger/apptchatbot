@@ -60,20 +60,36 @@ router.post('/', async (req, res) => {
     // 5. Handle email - FAST & SIMPLE
     if (userState.step === 'email') {
       await session.updateSession(from, 'email', incomingMsg);
-      await session.updateSession(from, 'step', 'areas');
-      twiml.message("🧼 How many rooms/areas? (e.g., 3 bedrooms, 2 bathrooms)");
+      await session.updateSession(from, 'step', 'rooms');
+      twiml.message("🏠 How many rooms need cleaning? (e.g., 3 bedrooms, 2 bathrooms, 1 living room)");
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // 6. Handle areas - QUICK & CLEAR
-    if (userState.step === 'areas') {
-      await session.updateSession(from, 'areas', incomingMsg);
+    // 6. Handle rooms - QUICK & CLEAR
+    if (userState.step === 'rooms') {
+      await session.updateSession(from, 'rooms', incomingMsg);
+      await session.updateSession(from, 'step', 'hallways');
+      twiml.message("🚪 How many hallways need cleaning? (e.g., 2 hallways, 1 entryway)");
+      return res.type('text/xml').send(twiml.toString());
+    }
+    
+    // 7. Handle hallways - FAST & HELPFUL
+    if (userState.step === 'hallways') {
+      await session.updateSession(from, 'hallways', incomingMsg);
+      await session.updateSession(from, 'step', 'stairways');
+      twiml.message("🪜 How many stairways need cleaning? (e.g., 1 staircase, 0 if none)");
+      return res.type('text/xml').send(twiml.toString());
+    }
+    
+    // 8. Handle stairways - QUICK & TO THE POINT
+    if (userState.step === 'stairways') {
+      await session.updateSession(from, 'stairways', incomingMsg);
       await session.updateSession(from, 'step', 'petIssue');
       twiml.message("🐶 Any pet urine issues? (Yes/No)");
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // 7. Handle pet issue - FAST & TO THE POINT
+    // 9. Handle pet issue - FAST & TO THE POINT
     if (userState.step === 'petIssue') {
       await session.updateSession(from, 'petIssue', incomingMsg);
       await session.updateSession(from, 'step', 'timeSlots');
@@ -92,7 +108,7 @@ router.post('/', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // 8. Handle day selection - SMART & CLEAR
+    // 10. Handle day selection - SMART & CLEAR
     if (userState.step === 'timeSlots' && !isNaN(incomingMsg) && parseInt(incomingMsg) > 0) {
       const dayIndex = parseInt(incomingMsg) - 1;
       const weeklyData = scheduler.getWeeklyAvailability();
@@ -126,7 +142,7 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // 9. Handle time selection - SMART BOOKING
+    // 11. Handle time selection - SMART BOOKING
     if (userState.step === 'timeSelection') {
       const timeInput = incomingMsg.trim();
       const selectedDay = (await session.getSession(from)).selectedDay;
@@ -145,8 +161,8 @@ router.post('/', async (req, res) => {
           
           await database.run(`
             INSERT INTO appointments (
-              id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              id, user, slot, worker, name, phone, email, address, rooms, hallways, stairways, petIssue, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
           `, [
             appointmentId,
             from,
@@ -156,7 +172,9 @@ router.post('/', async (req, res) => {
             details.phone,
             details.email,
             details.address,
-            details.areas,
+            details.rooms,
+            details.hallways,
+            details.stairways,
             details.petIssue,
             'confirmed'
           ]);
@@ -170,7 +188,9 @@ router.post('/', async (req, res) => {
               phone: details.phone,
               email: details.email,
               address: details.address,
-              areas: details.areas,
+              rooms: details.rooms,
+              hallways: details.hallways,
+              stairways: details.stairways,
               petIssue: details.petIssue,
               slot: result.slot,
               worker: result.worker
@@ -207,7 +227,7 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // 10. Handle special commands - FAST & HELPFUL
+    // 12. Handle special commands - FAST & HELPFUL
     if (incomingMsg.toLowerCase().includes('menu') || incomingMsg.toLowerCase().includes('help')) {
       const details = await session.getSession(from);
       if (details.name) {
@@ -229,7 +249,7 @@ router.post('/', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
     
-    // 11. Default fallback - HELPFUL & CLEAR
+    // 13. Default fallback - HELPFUL & CLEAR
     if (userState.step === 'start') {
       twiml.message("👋 Say 'hi' to book your carpet cleaning appointment!");
     } else {

@@ -50,7 +50,9 @@ class Database {
         phone TEXT NOT NULL,
         email TEXT NOT NULL,
         address TEXT NOT NULL,
-        areas TEXT NOT NULL,
+        rooms TEXT NOT NULL,
+        hallways TEXT NOT NULL,
+        stairways TEXT NOT NULL,
         petIssue TEXT NOT NULL,
         status TEXT DEFAULT 'confirmed',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -89,9 +91,44 @@ class Database {
           return;
         }
         logger.info('Database tables created/verified');
-        resolve();
+        
+        // Run migration to update existing schema if needed
+        this.migrateSchema().then(() => {
+          resolve();
+        }).catch((migrationErr) => {
+          logger.error('Migration error:', migrationErr);
+          resolve(); // Continue even if migration fails
+        });
       });
     });
+  }
+
+  async migrateSchema() {
+    try {
+      // Check if old areas column exists
+      const tableInfo = await this.query("PRAGMA table_info(appointments)");
+      const hasAreas = tableInfo.some(col => col.name === 'areas');
+      const hasRooms = tableInfo.some(col => col.name === 'rooms');
+      
+      if (hasAreas && !hasRooms) {
+        logger.info('Migrating database schema...');
+        
+        // Add new columns
+        await this.run("ALTER TABLE appointments ADD COLUMN rooms TEXT DEFAULT 'N/A'");
+        await this.run("ALTER TABLE appointments ADD COLUMN hallways TEXT DEFAULT 'N/A'");
+        await this.run("ALTER TABLE appointments ADD COLUMN stairways TEXT DEFAULT 'N/A'");
+        
+        // Copy data from areas to rooms (assuming areas contained room info)
+        await this.run("UPDATE appointments SET rooms = areas WHERE rooms = 'N/A'");
+        
+        // Remove old areas column (SQLite doesn't support DROP COLUMN, so we'll recreate)
+        // For now, we'll keep both and handle in the application layer
+        logger.info('Migration completed successfully');
+      }
+    } catch (error) {
+      logger.error('Migration failed:', error);
+      throw error;
+    }
   }
 
   async query(sql, params = []) {

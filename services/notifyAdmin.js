@@ -27,7 +27,9 @@ async function notifyAdmin(appointment) {
     phone = 'N/A',
     email = 'N/A',
     address = 'N/A',
-    areas = 'N/A',
+    rooms = 'N/A',
+    hallways = 'N/A',
+    stairways = 'N/A',
     petIssue = 'N/A',
     slot = 'N/A',
     worker = 'N/A'
@@ -39,7 +41,9 @@ async function notifyAdmin(appointment) {
     `Phone: ${phone}`,
     `Email: ${email}`,
     `Address: ${address}`,
-    `Areas: ${areas}`,
+    `Rooms: ${rooms}`,
+    `Hallways: ${hallways}`,
+    `Stairways: ${stairways}`,
     `Pet Issue: ${petIssue}`,
     `Date: ${slot}`,
     `Worker: ${worker}`

@@ -26,7 +26,9 @@ router.get('/', async (req, res) => {
       phone: appt.phone || 'Unknown',
       email: appt.email || 'Unknown',
       address: appt.address || 'Unknown',
-      areas: appt.areas || 'Unknown',
+      rooms: appt.rooms || 'Unknown',
+      hallways: appt.hallways || 'Unknown',
+      stairways: appt.stairways || 'Unknown',
       pet_issue: appt.petIssue || 'Unknown',
       appointment_date: appt.slot || new Date().toISOString(),
       service: 'Steam Cleaning',
@@ -79,7 +81,9 @@ router.post('/', async (req, res) => {
       phone, 
       email, 
       address, 
-      areas, 
+      rooms, 
+      hallways, 
+      stairways, 
       pet_issue, 
       appointment_date, 
       service, 
@@ -95,8 +99,8 @@ router.post('/', async (req, res) => {
     
     const result = await database.run(`
       INSERT INTO appointments (
-        id, user, slot, worker, name, phone, email, address, areas, petIssue, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        id, user, slot, worker, name, phone, email, address, rooms, hallways, stairways, petIssue, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `, [
       `appt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       'admin_created',
@@ -106,7 +110,9 @@ router.post('/', async (req, res) => {
       phone,
       email || '',
       address || '',
-      areas || '',
+      rooms || '',
+      hallways || '',
+      stairways || '',
       pet_issue || '',
       'Pending'
     ]);
@@ -117,7 +123,9 @@ router.post('/', async (req, res) => {
       phone,
       email,
       address,
-      areas,
+      rooms,
+      hallways,
+      stairways,
       pet_issue,
       appointment_date,
       service,
@@ -146,7 +154,7 @@ router.put('/:id', async (req, res) => {
     const values = [];
     
     Object.keys(updateData).forEach(key => {
-      if (['name', 'phone', 'email', 'address', 'areas', 'petIssue', 
+      if (['name', 'phone', 'email', 'address', 'rooms', 'hallways', 'stairways', 'petIssue', 
            'slot', 'worker', 'status'].includes(key)) {
         fields.push(`${key} = ?`);
         values.push(updateData[key]);
