@@ -116,7 +116,6 @@ class Database {
       const tableInfo = await this.query("PRAGMA table_info(appointments)");
       logger.info('Current table structure:', tableInfo.map(col => col.name));
       
-      const hasAreas = tableInfo.some(col => col.name === 'areas');
       const hasRooms = tableInfo.some(col => col.name === 'rooms');
       const hasHallways = tableInfo.some(col => col.name === 'hallways');
       const hasStairways = tableInfo.some(col => col.name === 'stairways');
@@ -157,18 +156,8 @@ class Database {
         }
       }
       
-      // If old areas column exists, copy data to rooms
-      if (hasAreas && hasRooms) {
-        try {
-          await this.run("UPDATE appointments SET rooms = areas WHERE rooms = 'N/A' OR rooms IS NULL");
-          logger.info('Copied areas data to rooms column');
-        } catch (copyError) {
-          logger.warn('Could not copy areas data:', copyError.message);
-        }
-      }
-      
       // Set default values for any NULL entries (only if columns exist)
-      if (hasRooms) {
+      if (hasRooms || !hasRooms) { // If we just added it or it already existed
         try {
           await this.run("UPDATE appointments SET rooms = 'N/A' WHERE rooms IS NULL");
         } catch (updateError) {
@@ -176,7 +165,7 @@ class Database {
         }
       }
       
-      if (hasHallways) {
+      if (hasHallways || !hasHallways) { // If we just added it or it already existed
         try {
           await this.run("UPDATE appointments SET hallways = 'N/A' WHERE hallways IS NULL");
         } catch (updateError) {
@@ -184,7 +173,7 @@ class Database {
         }
       }
       
-      if (hasStairways) {
+      if (hasStairways || !hasStairways) { // If we just added it or it already existed
         try {
           await this.run("UPDATE appointments SET stairways = 'N/A' WHERE stairways IS NULL");
         } catch (updateError) {
@@ -277,8 +266,8 @@ class Database {
       for (const appointment of appointments) {
         await this.run(`
           INSERT OR REPLACE INTO appointments 
-          (id, user, slot, worker, name, phone, email, address, areas, petIssue, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, user, slot, worker, name, phone, email, address, rooms, hallways, stairways, petIssue, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           appointment.user || `migrated_${Date.now()}`,
           appointment.user || 'unknown',
@@ -288,7 +277,9 @@ class Database {
           appointment.phone || 'unknown',
           appointment.email || 'unknown',
           appointment.address || 'unknown',
-          appointment.areas || 'unknown',
+          appointment.rooms || appointment.areas || 'N/A',
+          appointment.hallways || 'N/A',
+          appointment.stairways || 'N/A',
           appointment.petIssue || 'unknown',
           'confirmed'
         ]);
