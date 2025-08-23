@@ -22,21 +22,46 @@ router.post('/', async (req, res) => {
     // 1. Start conversation - IMMEDIATE RESPONSE
     if (incomingMsg.toLowerCase().includes('hi') || incomingMsg.toLowerCase().includes('hello')) {
       console.log('✅ Hi detected, sending welcome message');
-      twiml.message("👋 Welcome to Arlington Steamers!\n\n📝 What's your name?");
-      return res.type('text/xml').send(twiml.toString());
+      const responseMessage = "👋 Welcome to Arlington Steamers!\n\n📝 What's your name?";
+      twiml.message(responseMessage);
+      
+      const twimlResponse = twiml.toString();
+      console.log('📤 TwiML Response:', twimlResponse);
+      console.log('📤 Response length:', twimlResponse.length);
+      
+      // Set proper headers for Twilio
+      res.setHeader('Content-Type', 'text/xml');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      console.log('📤 Sending response to Twilio...');
+      return res.status(200).send(twimlResponse);
     }
     
     // 2. Handle name - FAST RESPONSE
     if (incomingMsg.length > 0 && !incomingMsg.toLowerCase().includes('hi') && !incomingMsg.toLowerCase().includes('hello')) {
       console.log('✅ Name received:', incomingMsg);
-      twiml.message(`👍 Hi ${incomingMsg}! 📱 What's your phone number?`);
-      return res.type('text/xml').send(twiml.toString());
+      const responseMessage = `👍 Hi ${incomingMsg}! 📱 What's your phone number?`;
+      twiml.message(responseMessage);
+      
+      const twimlResponse = twiml.toString();
+      console.log('📤 Name response TwiML:', twimlResponse);
+      
+      res.setHeader('Content-Type', 'text/xml');
+      res.setHeader('Cache-Control', 'no-cache');
+      return res.status(200).send(twimlResponse);
     }
     
     // 3. Default response - ALWAYS RESPOND
     console.log('✅ Sending default response');
-    twiml.message("👋 Say 'hi' to start booking your carpet cleaning appointment!");
-    return res.type('text/xml').send(twiml.toString());
+    const responseMessage = "👋 Say 'hi' to start booking your carpet cleaning appointment!";
+    twiml.message(responseMessage);
+    
+    const twimlResponse = twiml.toString();
+    console.log('📤 Default response TwiML:', twimlResponse);
+    
+    res.setHeader('Content-Type', 'text/xml');
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.status(200).send(twimlResponse);
     
   } catch (error) {
     console.error('❌ Error in WhatsApp bot:', error);
